@@ -121,11 +121,25 @@ extern "C" PyObject* polygon_y(PolygonObject* self, PyObject*) {
     return y;
 }
 
+// polygon points method returns the y values.
+extern "C" PyObject* polygon_points(PolygonObject* self, PyObject*) {
+    auto points = PyList_New(0);
+    for (auto& p: self->polygon->outer() ) {
+        PointObject* p1 = PyObject_New(PointObject, &PointType);
+        p1->point = new(point_t);
+        p1->point->x(p.x());
+        p1->point->y(p.y());
+        PyList_Append(points, (PyObject*)p1);
+    }
+    return points;
+}
+
 // polygon methods
 static PyMethodDef polygon_methods[] = {
     {"append", (PyCFunction)polygon_append, METH_O, "Append point"},
     {"x", (PyCFunction)polygon_x, METH_NOARGS, "Return list of x coordinates"},
     {"y", (PyCFunction)polygon_y, METH_NOARGS, "Return list of y coordinates"},
+    {"points", (PyCFunction)polygon_points, METH_NOARGS, "Return list of points"},
     {nullptr}
 };
 

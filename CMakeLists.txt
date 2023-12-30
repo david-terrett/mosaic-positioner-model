@@ -26,5 +26,8 @@ add_compile_definitions(BOOST_ALLOW_DEPRECATED_HEADERS)
 
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libgeometry.so"
     RENAME geometry.so
-    DESTINATION .
+    DESTINATION  python/geometry
+)
+install(FILES __init__.py
+    DESTINATION python/geometry
 )
