@@ -156,12 +156,34 @@ static PyTypeObject PolygonType = {
     .tp_new = polygon_new
 };
 
+// Intersects function
+extern "C" PyObject* intersects(PyObject*, PyObject* args) {
+    PolygonObject *p1, *p2;
+    if (!PyArg_ParseTuple(args, "OO", &p1, &p2)) return nullptr;
+    bool result(false);
+    if (PyObject_TypeCheck(p1, &PolygonType) &&
+            PyObject_TypeCheck(p2, &PolygonType)) {
+        result = boost::geometry::intersects(*p1->polygon, *p2->polygon);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "only polygons can intersect");
+        return nullptr;
+    }
+    return PyBool_FromLong((long)result);
+};
+
+// geometry module functions
+static PyMethodDef geometry_methods[] = {
+    {"intersects", (PyCFunction)intersects, METH_VARARGS, "polygons intersect"},
+    {nullptr}
+};
+
 // geometry module definition
 static PyModuleDef geometrymodule = {
     .m_base = PyModuleDef_HEAD_INIT,
     .m_name = "geometry",
     .m_doc = "minimal interface to boost geometry.",
     .m_size = -1,
+    .m_methods = geometry_methods
 };
 
 // geometry module init function
