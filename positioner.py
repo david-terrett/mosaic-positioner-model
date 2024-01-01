@@ -9,6 +9,7 @@ from math import radians
 from math import sin
 from math import sqrt
 
+from geometry import intersects
 from geometry import move_point
 from geometry import move_polygon
 from geometry import point
@@ -25,8 +26,8 @@ class positioner(object):
 
         Parameters
         ----------
-            position : point
-                position of positioner axis 1 in focal plane
+        position : point
+            position of positioner axis 1 in focal plane
         """
 
         # Define the rotation axis of arm 1 for a positioner at placed at 0,0
@@ -106,6 +107,24 @@ class positioner(object):
               (p.y() - self.axis_1_0.y()) * (p.y() - self.axis_1_0.y()))
         return r2 < self.max_r * self.max_r and r2 > self.min_r * self.min_r
 
+
+    def collides_with(self, other):
+        """
+        Postioner collides with another
+
+        Parameters
+        ----------
+        other : positioner
+
+        Returns
+        -------
+        Boolean
+            True if the positioners collide
+        """
+        return (intersects(self.arm_1, other.arm_1) or
+                intersects(self.arm_1, other.arm_2) or
+                intersects(self.arm_2, other.arm_1) or
+                intersects(self.arm_2, other.arm_2))
 
     def park(self):
         """
