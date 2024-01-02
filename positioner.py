@@ -1,7 +1,5 @@
 # -*- coding utf-8 -*-
 
-import matplotlib.pyplot as plt
-
 from math import acos
 from math import atan2
 from math import cos
@@ -75,8 +73,8 @@ class positioner(object):
         self.fiber_0 = move_point(fiber, position.x(), position.y())
 
         # Set the axes to the park orientations
-        self.theta_1_0 = pi/2.0
-        self.theta_2_0 = -pi/2.0
+        self.theta_1_0 = 0.0
+        self.theta_2_0 = pi
 
         # Calculate the distances from axis 1 to axis 2 and axis 2 to the
         # fiber (need for calculating the arm angles to reach a point).
@@ -181,7 +179,7 @@ class positioner(object):
         self.pose([0.0, pi])
 
 
-    def plot(self):
+    def plot(self, plt):
         """
         Plot the positioner outline
         """
