@@ -9,6 +9,8 @@ project(poistioner)
 add_subdirectory(geometry)
 
 install(FILES
+    focal_plane.py
     positioner.py
+    target.py
     DESTINATION .
 )
