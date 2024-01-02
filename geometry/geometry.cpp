@@ -156,6 +156,22 @@ static PyTypeObject PolygonType = {
     .tp_new = polygon_new
 };
 
+// distance function
+extern "C" PyObject* distance(PyObject*, PyObject* args) {
+    PointObject *p1, *p2;
+    if (!PyArg_ParseTuple(args, "OO", &p1, &p2)) return nullptr;
+    double result(0.0);
+    if (PyObject_TypeCheck(p1, &PointType) &&
+            PyObject_TypeCheck(p2, &PointType)) {
+        result = boost::geometry::distance(*p1->point, *p2->point);
+    } else {
+        PyErr_SetString(PyExc_TypeError, "distance only supports points");
+        return nullptr;
+    }
+    return PyFloat_FromDouble(result);
+};
+
+
 // Intersects function
 extern "C" PyObject* intersects(PyObject*, PyObject* args) {
     PolygonObject *p1, *p2;
@@ -173,6 +189,7 @@ extern "C" PyObject* intersects(PyObject*, PyObject* args) {
 
 // geometry module functions
 static PyMethodDef geometry_methods[] = {
+    {"distance", (PyCFunction)distance, METH_VARARGS, "distance between points"},
     {"intersects", (PyCFunction)intersects, METH_VARARGS, "polygons intersect"},
     {nullptr}
 };
