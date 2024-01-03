@@ -191,9 +191,9 @@ class positioner(object):
         """
         plt.plot(self.arm_1.x(), self.arm_1.y(), color='black')
         plt.plot(self.arm_2.x(), self.arm_2.y(), color='black')
-        plt.plot(self.axis_1_0.x(), self.axis_1_0.y(), '+')
-        plt.plot(self.axis_2.x(), self.axis_2.y(), '+')
-        plt.plot(self.fiber.x(), self.fiber.y(), 'o')
+        plt.plot(self.axis_1_0.x(), self.axis_1_0.y(), '+', color='black')
+        plt.plot(self.axis_2.x(), self.axis_2.y(), '+', color='black')
+        plt.plot(self.fiber.x(), self.fiber.y(), 'o', color='red')
 
 
     def pose(self, theta):
