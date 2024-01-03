@@ -176,7 +176,7 @@ class positioner(object):
         if other is self:
             return False
         return (intersects(self.arm_1, other.arm_1) or
-                intersects(self.arm_2, other.arm_1))
+                intersects(self.arm_2, other.arm_2))
 
     def park(self):
         """
