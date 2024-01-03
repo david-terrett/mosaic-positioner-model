@@ -32,6 +32,7 @@ class positioner(object):
             position of positioner axis 1 in focal plane
         """
         self.targets = {}
+        self.target = None
 
         # Define the rotation axis of arm 1 for a positioner at placed at 0,0
         axis_1 = point(0.0, 0.0)
@@ -72,9 +73,9 @@ class positioner(object):
         self.arm_2_0 = move_polygon(arm_2, position.x(), position.y())
         self.fiber_0 = move_point(fiber, position.x(), position.y())
 
-        # Set the axes to the park orientations
-        self.theta_1_0 = 0.0
-        self.theta_2_0 = pi
+        # Set the axes to the angles we used for construction
+        self.theta_1_0 = pi/2.0
+        self.theta_2_0 = -pi/2.0
 
         # Calculate the distances from axis 1 to axis 2 and axis 2 to the
         # fiber (need for calculating the arm angles to reach a point).
@@ -118,7 +119,7 @@ class positioner(object):
         return True
 
 
-    def assign(self, t, alt):
+    def assign_target(self, t, alt=False):
         """
         Assign a target to the positioner
 
@@ -126,15 +127,18 @@ class positioner(object):
         ----------
         t : target
             target to assign
-        a : boolean
+        alt : boolean
             Use alternate arm position
         """
-        if alt:
-            self.pose(self.targets[t][0])
-        else:
-            self.pose(self.targets[t][1])
+        if self.target:
+            self.target.positioner = None
+        if t:
+            if alt:
+                self.pose(self.targets[t][0])
+            else:
+                self.pose(self.targets[t][1])
+            t.positioner = self
         self.target = t
-        t.positioner = self
 
 
     def can_reach(self, p):
@@ -169,6 +173,8 @@ class positioner(object):
         Boolean
             True if the positioners collide
         """
+        if other is self:
+            return False
         return (intersects(self.arm_1, other.arm_1) or
                 intersects(self.arm_2, other.arm_1))
 
@@ -199,6 +205,8 @@ class positioner(object):
         theta : list[float]
             Axis angles (radians)
         """
+        self.theta_1 = theta[0]
+        self.theta_2 = theta[1]
 
         # Rotate arm 1
         c = cos(theta[0] - self.theta_1_0)

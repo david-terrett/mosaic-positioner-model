@@ -29,21 +29,44 @@ class focal_plane(object):
         self._add_positioner(-1, 0.5)
         self._add_positioner(-1, -0.5)
 
+    # empty list of targets
         self.targets = []
 
 
     def add_targets_to_positioners(self, targets):
+        """
+        Add targets to the positioners
+
+        Parameters
+        ----------
+        targets : [target]
+            List of targets
+        """
         for p in self.positioners:
             for t in self.targets:
                 p.add_target(t)
 
 
+    def clear_target_assignments(self):
+        for pos in self.positioners:
+            pos.assign_target(None)
+
     def create_random_targets(self, n):
+        """
+        Create random targets and add them to the positioners
+
+        Parameters
+        ---------
+        n : int
+            Number of targets to create
+        """
+        self.targets = []
         for i in range(0, n):
             x = self.x_min + random() * (self.x_max - self.x_min)
             y = self.y_min + random() * (self.y_max - self.y_min)
             self.targets.append(target(x, y))
         self.add_targets_to_positioners(self.targets)
+
 
     def plot(self, plt):
         plt.gca().set_aspect('equal')
@@ -53,5 +76,43 @@ class focal_plane(object):
             plt.plot(t.position.x(), t.position.y(), 'o', color='black')
         return plt
 
+
+    def simple_allocator(self):
+        """
+        Simple target to positioner assignment alogorithm
+        """
+        self.clear_target_assignments()
+        for pos in self.positioners:
+            for t in [*pos.targets]:
+                if not t.positioner:
+                    if self._assign_target_to_positioner(pos, t):
+                        break
+
+
     def _add_positioner(self, i, j):
         self.positioners.append(positioner(point(i * self.dx, j * self.dy)))
+
+
+    def _assign_target_to_positioner(self, pos, t):
+        """
+        Try assigning a target to positioner. If we can't find a target that
+        doesn't cause a collision with another positioner, put the positioner
+        back to where it was.
+        """
+        theta_1 = pos.theta_1
+        theta_2 = pos.theta_2
+        pos.assign_target(t, False)
+        if self._has_collision(pos):
+            pos.assign_target(t, True)
+            if self._has_collision(pos):
+                pos.assign_target(None)
+                pos.pose([theta_1, theta_2])
+                return False
+        return True
+
+
+    def _has_collision(self, pos):
+        for p in self.positioners:
+            if p.collides_with(pos):
+                return True
+        return False
