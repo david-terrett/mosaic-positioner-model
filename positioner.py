@@ -160,6 +160,14 @@ class positioner(object):
         return r2 < self.max_r * self.max_r and r2 > self.min_r * self.min_r
 
 
+    def clear_targets(self):
+        """
+        Clear the list of reachable targets
+        """
+        self.assign_target(None)
+        self.targets = {}
+
+
     def collides_with(self, other):
         """
         Postioner collides with another
@@ -189,7 +197,7 @@ class positioner(object):
         """
         Plot the positioner outline
         """
-        plt.plot(self.arm_1.x(), self.arm_1.y(), color='black')
+        plt.plot(self.arm_1.x(), self.arm_1.y(), color='gray')
         plt.plot(self.arm_2.x(), self.arm_2.y(), color='black')
         plt.plot(self.axis_1_0.x(), self.axis_1_0.y(), '+', color='black')
         plt.plot(self.axis_2.x(), self.axis_2.y(), '+', color='black')

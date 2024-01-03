@@ -47,9 +47,21 @@ class focal_plane(object):
                 p.add_target(t)
 
 
+    def clear_targets(self):
+        """
+        Remove targets from all positioners
+        """
+        for pos in self.positioners:
+            pos.clear_targets()
+
+
     def clear_target_assignments(self):
+        """
+        Clear the target assignments for all positioners
+        """
         for pos in self.positioners:
             pos.assign_target(None)
+
 
     def create_random_targets(self, n):
         """
@@ -87,6 +99,20 @@ class focal_plane(object):
                 if not t.positioner:
                     if self._assign_target_to_positioner(pos, t):
                         break
+
+
+    def unallocated(self):
+        """
+        Returns
+        -------
+        int
+            number of positioners without a target
+        """
+        n = len(self.positioners)
+        for pos in self.positioners:
+            if pos.target:
+                n -= 1
+        return n
 
 
     def _add_positioner(self, i, j):
