@@ -94,12 +94,20 @@ class focal_plane(object):
         Simple target to positioner assignment alogorithm
         """
         self.clear_target_assignments()
-        for pos in self.positioners:
-            for t in [*pos.targets]:
-                if not t.positioner:
-                    if self._assign_target_to_positioner(pos, t):
-                        break
 
+        # Until there are no unallocated positioners left...
+        unalloc = self.unallocated()
+        while unalloc > 0:
+            for pos in self.positioners:
+                for t in [*pos.targets]:
+                    if not t.positioner:
+                        if self._assign_target_to_positioner(pos, t):
+                            break
+
+            # If that pass didn't find any more, give up.
+            if unalloc == self.unallocated():
+                break
+            unalloc = self.unallocated()
 
     def unallocated(self):
         """
@@ -108,10 +116,10 @@ class focal_plane(object):
         int
             number of positioners without a target
         """
-        n = len(self.positioners)
+        n = 0
         for pos in self.positioners:
-            if pos.target:
-                n -= 1
+            if not pos.target:
+                n += 1
         return n
 
 
