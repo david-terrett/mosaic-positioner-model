@@ -4,6 +4,9 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
+#include <iomanip>
+#include <sstream>
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <boost/geometry.hpp>
@@ -50,6 +53,14 @@ extern "C" PyObject* point_y(PointObject* self, PyObject*) {
     return PyFloat_FromDouble(self->point->y());
 }
 
+// point __repr__ method
+extern "C" PyObject* point_repr(PointObject* self, PyObject*) {
+    std::ostringstream repr;
+    repr << std::setprecision(16);
+    repr << "point(" << self->point->x() << "," << self->point->y() << ")";
+    return PyUnicode_DecodeUTF8(repr.str().c_str(), repr.str().size(), nullptr);
+}
+
 // point methods
 static PyMethodDef point_methods[] = {
     {"x", (PyCFunction)point_x, METH_NOARGS, "Return x"},
@@ -64,6 +75,7 @@ static PyTypeObject PointType = {
     .tp_basicsize = sizeof(PointObject),
     .tp_itemsize = 0,
     .tp_dealloc =(destructor)point_dealloc,
+    .tp_repr = (reprfunc)point_repr,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = PyDoc_STR("point objects"),
     .tp_methods = point_methods,
