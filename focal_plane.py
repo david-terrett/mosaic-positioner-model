@@ -15,9 +15,9 @@ class focal_plane(object):
     def __init__(self):
         self.dx = 95.0
         self.dy = 82.3
-        self.x_max = 11.0 * self.dx
+        self.x_max = 13.0 * self.dx
         self.x_min = -self.x_max;
-        self.y_max = 11.0 * self.dy
+        self.y_max = 12.0 * self.dy
         self.y_min = -self.y_max;
 
     # Build the list of positioners
@@ -102,7 +102,8 @@ class focal_plane(object):
         for p in self.positioners:
             p.plot(plt)
         for t in self.targets:
-            plt.plot(t.position.x(), t.position.y(), 'o', color='black')
+            plt.plot(t.position.x(), t.position.y(), '.', color='black',
+                     markersize=1.0)
         return plt
 
 

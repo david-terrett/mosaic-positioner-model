@@ -199,9 +199,16 @@ class positioner(object):
         """
         plt.plot(self.arm_1.x(), self.arm_1.y(), color='gray')
         plt.plot(self.arm_2.x(), self.arm_2.y(), color='black')
-        plt.plot(self.axis_1_0.x(), self.axis_1_0.y(), '+', color='black')
-        plt.plot(self.axis_2.x(), self.axis_2.y(), '+', color='black')
-        plt.plot(self.fiber.x(), self.fiber.y(), 'o', color='red')
+        plt.plot(self.axis_1_0.x(), self.axis_1_0.y(), '+', color='black',
+                 markersize=4.0)
+        plt.plot(self.axis_2.x(), self.axis_2.y(), '+', color='black',
+                 markersize=4.0)
+        if self.target:
+            c = 'blue'
+        else:
+            c = 'red'
+        plt.plot(self.fiber.x(), self.fiber.y(), 'o', color=c,
+                 markersize=4.0)
 
 
     def pose(self, theta):
