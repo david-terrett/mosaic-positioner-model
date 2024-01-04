@@ -1,5 +1,6 @@
 # -*- coding utf-8 -*-
 
+from math import floor
 from random import random
 
 from geometry import point
@@ -14,20 +15,36 @@ class focal_plane(object):
     def __init__(self):
         self.dx = 95.0
         self.dy = 82.3
-        self.x_max = 2.0 * self.dx
+        self.x_max = 11.0 * self.dx
         self.x_min = -self.x_max;
-        self.y_max = 2.0 * self.dy
+        self.y_max = 11.0 * self.dy
         self.y_min = -self.y_max;
 
     # Build the list of positioners
         self.positioners = []
-        self._add_positioner(0, 0)
-        self._add_positioner(0, 1)
-        self._add_positioner(0, -1)
-        self._add_positioner(1, 0.5)
-        self._add_positioner(1, -0.5)
-        self._add_positioner(-1, 0.5)
-        self._add_positioner(-1, -0.5)
+        self._add_column(0, 21)
+        self._add_column(1, 20)
+        self._add_column(-1, 20)
+        self._add_column(2, 21)
+        self._add_column(-2, 21)
+        self._add_column(3, 20)
+        self._add_column(-3, 20)
+        self._add_column(4, 19)
+        self._add_column(-4, 19)
+        self._add_column(5, 8)
+        self._add_column(-5, 8)
+        self._add_column(6, 7)
+        self._add_column(-6, 7)
+        self._add_column(7, 6)
+        self._add_column(-7, 6)
+        self._add_column(8, 7)
+        self._add_column(-8, 7)
+        self._add_column(9, 8)
+        self._add_column(-9, 8)
+        self._add_column(10, 9)
+        self._add_column(-10, 9)
+        self._add_column(11, 8)
+        self._add_column(-11, 8)
 
     # empty list of targets
         self.targets = []
@@ -99,15 +116,17 @@ class focal_plane(object):
         unalloc = self.unallocated()
         while unalloc > 0:
             for pos in self.positioners:
-                for t in [*pos.targets]:
-                    if not t.positioner:
-                        if self._assign_target_to_positioner(pos, t):
-                            break
+                if not pos.target:
+                    for t in [*pos.targets]:
+                        if not t.positioner:
+                            if self._assign_target_to_positioner(pos, t):
+                                break
 
             # If that pass didn't find any more, give up.
             if unalloc == self.unallocated():
                 break
             unalloc = self.unallocated()
+            print(unalloc)
 
     def unallocated(self):
         """
@@ -121,6 +140,18 @@ class focal_plane(object):
             if not pos.target:
                 n += 1
         return n
+
+
+    def _add_column(self, x, n):
+        if n % 2:
+            self._add_positioner(x, 0)
+            for y in range(1, floor(n/2.0) + 1):
+                self._add_positioner(x, y)
+                self._add_positioner(x, -y)
+        else:
+            for y in range(0, floor(n/2.0)):
+                self._add_positioner(x, y + 0.5)
+                self._add_positioner(x, -y - 0.5)
 
 
     def _add_positioner(self, i, j):
