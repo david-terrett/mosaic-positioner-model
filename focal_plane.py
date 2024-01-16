@@ -13,9 +13,10 @@ class focal_plane(object):
 
     Attributes
     ----------
+        allocated : int
+            Number of positioners with targets allocated
         positioners : [positioner]
             List of the positioners in the focal plane
-
         targets : [targets]
             List of targets
     """
@@ -54,6 +55,9 @@ class focal_plane(object):
         self._add_column(11, 8)
         self._add_column(-11, 8)
 
+    # No targets allocated
+        self.allocated = 0
+
     # empty list of targets
         self.targets = []
 
@@ -86,6 +90,7 @@ class focal_plane(object):
         """
         for pos in self.positioners:
             pos.assign_target(None)
+        self.allocated = 0
 
 
     def create_random_targets(self, n):
@@ -129,8 +134,8 @@ class focal_plane(object):
         positioners = sorted(self.positioners, key=lambda p: len(p.targets))
 
         # Until there are no unallocated positioners left...
-        unalloc = self.unallocated()
-        while unalloc > 0:
+        alloc = self.allocated
+        while self.allocated < len(self.positioners):
             for pos in positioners:
                 if not pos.target:
                     for t in [*pos.targets]:
@@ -139,9 +144,9 @@ class focal_plane(object):
                                 break
 
             # If that pass didn't find any more, give up.
-            if unalloc == self.unallocated():
+            if alloc == self.allocated:
                 break
-            unalloc = self.unallocated()
+            alloc = self.allocated
 
     def swapper(self):
         """
@@ -152,20 +157,6 @@ class focal_plane(object):
         for pos in self.positioners:
             if not pos.target:
                 self._try_swap(pos)
-
-
-    def unallocated(self):
-        """
-        Returns
-        -------
-        int
-            number of positioners without a target
-        """
-        n = 0
-        for pos in self.positioners:
-            if not pos.target:
-                n += 1
-        return n
 
 
     def _add_column(self, x, n):
@@ -200,6 +191,7 @@ class focal_plane(object):
                 pos.assign_target(current_target)
                 pos.pose([current_theta_1, current_theta_2])
                 return False
+        self.allocated += 1
         return True
 
 
