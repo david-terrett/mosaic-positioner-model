@@ -1,7 +1,5 @@
 # -*- coding utf-8 -*-
 
-from math import pi
-
 from geometry import point
 
 class target(object):

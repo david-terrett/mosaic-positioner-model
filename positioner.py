@@ -23,15 +23,23 @@ class positioner(object):
     Attributes
     ----------
     arm_1 : polygon
-            outline of the lower arm
+        outline of the lower arm
     arm_2 : polygon
-            outline of the upper arm
+        outline of the upper arm
+    axis_2 : point
+        position of second axis in focal plane
+    fiber : point
+        location of fiber in focal plane
     max_r : float
         The maximum reach of the positioner
     min_r : float
         The minimum reach of the positioner
-    targets : {}
-        A map of reachable targets indexed by target
+    targets : dict
+        A dictionary of reachable targets indexed by target
+    theta_1 : float
+        Angle of lower arm relative to x axis (radians)
+    theta_2 : float
+        Angle of lower arm relative to x axis (radians)
     """
 
 
@@ -80,15 +88,15 @@ class positioner(object):
         fiber = move_point(fiber, axis_2.x(), axis_2.y())
 
         # Move everything to the postioner's position
-        self.axis_1_0 = move_point(axis_1, position.x(), position.y())
-        self.arm_1_0 = move_polygon(arm_1, position.x(), position.y())
-        self.axis_2_0 = move_point(axis_2, position.x(), position.y())
-        self.arm_2_0 = move_polygon(arm_2, position.x(), position.y())
-        self.fiber_0 = move_point(fiber, position.x(), position.y())
+        self._axis_1_base = move_point(axis_1, position.x(), position.y())
+        self._arm_1_base = move_polygon(arm_1, position.x(), position.y())
+        self._axis_2_base = move_point(axis_2, position.x(), position.y())
+        self._arm_2_base = move_polygon(arm_2, position.x(), position.y())
+        self._fiber_base = move_point(fiber, position.x(), position.y())
 
         # Set the axes to the angles we used for construction
-        self.theta_1_0 = pi/2.0
-        self.theta_2_0 = -pi/2.0
+        self._theta_1_base = pi/2.0
+        self._theta_2_base = -pi/2.0
 
         # Calculate the distances from axis 1 to axis 2 and axis 2 to the
         # fiber (need for calculating the arm angles to reach a point).
@@ -168,8 +176,8 @@ class positioner(object):
         : boolean
             True if the fiber can be postioned at the specified point
         """
-        r2 = ((p.x() - self.axis_1_0.x()) * (p.x() - self.axis_1_0.x()) +
-              (p.y() - self.axis_1_0.y()) * (p.y() - self.axis_1_0.y()))
+        r2 = ((p.x() - self._axis_1_base.x()) * (p.x() - self._axis_1_base.x()) +
+              (p.y() - self._axis_1_base.y()) * (p.y() - self._axis_1_base.y()))
         return r2 < self.max_r * self.max_r and r2 > self.min_r * self.min_r
 
 
@@ -212,7 +220,7 @@ class positioner(object):
         """
         plt.plot(self.arm_1.x(), self.arm_1.y(), color='gray')
         plt.plot(self.arm_2.x(), self.arm_2.y(), color='black')
-        plt.plot(self.axis_1_0.x(), self.axis_1_0.y(), '+', color='black',
+        plt.plot(self._axis_1_base.x(), self._axis_1_base.y(), '+', color='black',
                  markersize=4.0)
         plt.plot(self.axis_2.x(), self.axis_2.y(), '+', color='black',
                  markersize=4.0)
@@ -237,20 +245,20 @@ class positioner(object):
         self.theta_2 = theta[1]
 
         # Rotate arm 1
-        c = cos(theta[0] - self.theta_1_0)
-        s = sin(theta[0] - self.theta_1_0)
-        self.arm_1 = rotate_polygon(self.arm_1_0, self.axis_1_0, c, s)
-        self.axis_2 = rotate_point(self.axis_2_0, self.axis_1_0, c, s)
+        c = cos(theta[0] - self._theta_1_base)
+        s = sin(theta[0] - self._theta_1_base)
+        self.arm_1 = rotate_polygon(self._arm_1_base, self._axis_1_base, c, s)
+        self.axis_2 = rotate_point(self._axis_2_base, self._axis_1_base, c, s)
 
         # Move arm 2 to the new axis 2 position.
-        arm_2 = move_polygon(self.arm_2_0, self.axis_2.x() - self.axis_2_0.x(),
-                             self.axis_2.y() - self.axis_2_0.y())
-        fiber = move_point(self.fiber_0, self.axis_2.x() - self.axis_2_0.x(),
-                             self.axis_2.y() - self.axis_2_0.y())
+        arm_2 = move_polygon(self._arm_2_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
+        fiber = move_point(self._fiber_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
 
         # Rotate arm 2
-        c = cos(theta[1] - self.theta_2_0)
-        s = sin(theta[1] - self.theta_2_0)
+        c = cos(theta[1] - self._theta_2_base)
+        s = sin(theta[1] - self._theta_2_base)
         self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
         self.fiber = rotate_point(fiber, self.axis_2, c, s)
 
@@ -258,12 +266,12 @@ class positioner(object):
     def _arm_angles(self, p):
 
         # Bearing of target
-        t = atan2(p.y() - self.axis_1_0.y(), p.x() - self.axis_1_0.x())
+        t = atan2(p.y() - self._axis_1_base.y(), p.x() - self._axis_1_base.x())
 
         # Solve for the angles of a triangle formed by axis 1 (A), axis 2 (B)
         # and the fiber (C)
         a = self._axis_2_to_fiber
-        b = distance(self.axis_1_0, p)
+        b = distance(self._axis_1_base, p)
         c = self._axis_1_to_axis_2
         A = acos((b * b + c * c - a * a)/(2.0 * b * c))
         B = acos((a * a + c * c - b * b)/(2.0 * a * c))

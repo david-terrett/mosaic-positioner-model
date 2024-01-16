@@ -24,9 +24,9 @@ class focal_plane(object):
         self._dx = 95.0
         self._dy = 82.3
         self._x_max = 13.0 * self._dx
-        self._x_min = -self._x_max;
+        self._x_min = -self._x_max
         self._y_max = 12.0 * self._dy
-        self._y_min = -self._y_max;
+        self._y_min = -self._y_max
 
     # Build the list of positioners
         self.positioners = []
@@ -68,7 +68,7 @@ class focal_plane(object):
             List of targets
         """
         for p in self.positioners:
-            for t in self.targets:
+            for t in targets:
                 p.add_target(t)
 
 
@@ -106,6 +106,9 @@ class focal_plane(object):
 
 
     def plot(self, plt):
+        """
+        Plot positioners
+        """
         plt.gca().set_aspect('equal')
         for p in self.positioners:
             p.plot(plt)
@@ -123,7 +126,7 @@ class focal_plane(object):
 
         # sort the list of positioners so that we allocate the ones
         # with the fewest targets first
-        positioners = sorted(self.positioners, key=self._num_targets)
+        positioners = sorted(self.positioners, key=lambda p: len(p.targets))
 
         # Until there are no unallocated positioners left...
         unalloc = self.unallocated()
@@ -187,15 +190,15 @@ class focal_plane(object):
         doesn't cause a collision with another positioner, put the positioner
         back to where it was.
         """
-        theta_1 = pos.theta_1
-        theta_2 = pos.theta_2
-        target = pos.target
+        current_theta_1 = pos.theta_1
+        current_theta_2 = pos.theta_2
+        current_target = pos.target
         pos.assign_target(t, False)
         if self._has_collision(pos):
             pos.assign_target(t, True)
             if self._has_collision(pos):
-                pos.assign_target(target)
-                pos.pose([theta_1, theta_2])
+                pos.assign_target(current_target)
+                pos.pose([current_theta_1, current_theta_2])
                 return False
         return True
 
@@ -205,10 +208,6 @@ class focal_plane(object):
             if p.collides_with(pos):
                 return True
         return False
-
-
-    def _num_targets(self, p):
-        return len(p.targets)
 
 
     def _try_swap(self, this_pos):
