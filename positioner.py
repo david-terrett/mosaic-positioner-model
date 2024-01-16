@@ -19,6 +19,19 @@ from geometry import rotate_polygon
 class positioner(object):
     """
     Model of a MOSAIC fiber positioner
+
+    Attributes
+    ----------
+    arm_1 : polygon
+            outline of the lower arm
+    arm_2 : polygon
+            outline of the upper arm
+    max_r : float
+        The maximum reach of the positioner
+    min_r : float
+        The minimum reach of the positioner
+    targets : {}
+        A map of reachable targets indexed by target
     """
 
 
@@ -79,18 +92,18 @@ class positioner(object):
 
         # Calculate the distances from axis 1 to axis 2 and axis 2 to the
         # fiber (need for calculating the arm angles to reach a point).
-        self.axis_1_to_axis_2 = distance(axis_1, axis_2)
-        self.axis_2_to_fiber = distance(axis_2, fiber)
+        self._axis_1_to_axis_2 = distance(axis_1, axis_2)
+        self._axis_2_to_fiber = distance(axis_2, fiber)
 
         # Define the maximum and minimum radius the fibre can reach from the
         # arm 1 axis
-        self.max_r = self.axis_1_to_axis_2 + self.axis_2_to_fiber
-        self.min_r = fabs(self.axis_2_to_fiber - self.axis_1_to_axis_2)
+        self.max_r = self._axis_1_to_axis_2 + self._axis_2_to_fiber
+        self.min_r = fabs(self._axis_2_to_fiber - self._axis_1_to_axis_2)
 
         # Define the angle offsets between the arm 1 and axis 2 and arm 2
         # and the fiber.
-        self.arm_1_angle_offset = atan2(axis_2.y(), axis_2.x()) - pi/2.0
-        self.arm_2_angle_offset = atan2(fiber.y() - axis_2.y(),
+        self._arm_1_angle_offset = atan2(axis_2.y(), axis_2.x()) - pi/2.0
+        self._arm_2_angle_offset = atan2(fiber.y() - axis_2.y(),
                                         fiber.x() - axis_2.x()) + pi/2.0
 
         # Park the positioner
@@ -249,9 +262,9 @@ class positioner(object):
 
         # Solve for the angles of a triangle formed by axis 1 (A), axis 2 (B)
         # and the fiber (C)
-        a = self.axis_2_to_fiber
+        a = self._axis_2_to_fiber
         b = distance(self.axis_1_0, p)
-        c = self.axis_1_to_axis_2
+        c = self._axis_1_to_axis_2
         A = acos((b * b + c * c - a * a)/(2.0 * b * c))
         B = acos((a * a + c * c - b * b)/(2.0 * a * c))
 
@@ -263,5 +276,5 @@ class positioner(object):
         arm_1_2 = t + A
         arm_2_2 = arm_1_2 - pi + B
 
-        return ([arm_1_1 - self.arm_1_angle_offset, arm_2_1 - self.arm_2_angle_offset],
-                [arm_1_2 - self.arm_1_angle_offset, arm_2_2 - self.arm_2_angle_offset])
+        return ([arm_1_1 - self._arm_1_angle_offset, arm_2_1 - self._arm_2_angle_offset],
+                [arm_1_2 - self._arm_1_angle_offset, arm_2_2 - self._arm_2_angle_offset])

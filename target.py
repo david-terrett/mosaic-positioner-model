@@ -9,6 +9,14 @@ class target(object):
     A target is a focal plane position, the positioner it is allocated
     to (if any) and the two sets of arm angles the put the fiber onto
     the target.
+
+    Attributes
+    ----------
+        position : point
+            Position of target in the focal plane
+
+        positioner : positioner
+            The positioner assigned to this target (can be None)
     """
 
     def __init__(self, x, y):
