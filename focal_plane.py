@@ -93,16 +93,27 @@ class focal_plane(object):
         self.allocated = 0
 
 
-    def create_random_targets(self, n):
+    def create_random_targets(self, density):
         """
         Create random targets and add them to the positioners
 
         Parameters
         ---------
-        n : int
-            Number of targets to create
+        density : float
+            Density of targets to create (number per arcmin^2)
         """
         self.targets = []
+
+        # Plate scale (mm/arcsec)
+        plate_scale = 3.316
+
+        # Area to cover (arcsec^2)
+        area = ((self._x_max - self._x_min) * (self._y_max - self._y_min) /
+                (plate_scale * plate_scale))
+
+        # Number of targets to create
+        n = int(density * area / 3600.0)
+
         for i in range(0, n):
             x = self._x_min + random() * (self._x_max - self._x_min)
             y = self._y_min + random() * (self._y_max - self._y_min)
