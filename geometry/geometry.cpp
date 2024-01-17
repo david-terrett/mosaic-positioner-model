@@ -2,7 +2,7 @@
  * Python interface to a tiny subset of boost::geometry
 */
 #define PY_SSIZE_T_CLEAN
-#include <Python.h>
+#include "Python.h"
 
 #include <iomanip>
 #include <sstream>
