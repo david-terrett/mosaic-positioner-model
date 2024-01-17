@@ -148,6 +148,9 @@ class focal_plane(object):
                 break
             alloc = self.allocated
 
+        # Now runner the swapper
+        self.swapper()
+
     def swapper(self):
         """
         Look for targets for free positioners by looking for reachable targets
@@ -156,7 +159,8 @@ class focal_plane(object):
         """
         for pos in self.positioners:
             if not pos.target:
-                self._try_swap(pos)
+                if not self._try_swap(pos, False):
+                    self._try_swap(pos, True)
 
 
     def _add_column(self, x, n):
@@ -202,8 +206,7 @@ class focal_plane(object):
         return False
 
 
-    def _try_swap(self, this_pos):
-        print("trying", this_pos)
+    def _try_swap(self, this_pos, alt):
 
         # Save the current pos of the positioner so that we can put it back
         # to where it was
@@ -211,24 +214,30 @@ class focal_plane(object):
         theta2 = this_pos.theta_2
 
         # Go through all the targets this positioner can reach
-        for t in [*this_pos.targets]:
-            other_pos = t.positioner
+        for t1 in [*this_pos.targets]:
+            other_pos = t1.positioner
             if other_pos:
 
                 # This target is reachable but assigned to another positioner
-                # so put this positioner on the targets and check for
-                # collisions - but skipping the other positioner.
+                # so put this positioner on the target and check for
+                # collisions - but skipping the other positioner as we are
+                # going to try moving it somewhere else.
+                if alt:
+                    this_pos.pose(this_pos.targets[t1][1])
+                else:
+                    this_pos.pose(this_pos.targets[t1][0])
                 for p in self.positioners:
                     if p is not other_pos:
-                        if p.collides_with(this_pos):
+                        if not p.collides_with(this_pos):
                             break
 
                 # We have found a target for this positioner so now look
-                # for one for the positioner we are swapping with
-                for t in other_pos.targets:
-                    other_pos.assign_target(t)
-                    if self._assign_target_to_positioner(other_pos, t):
-                        return
+                # for one for the positioner we are trying swapping with
+                for t2 in other_pos.targets:
+                    if self._assign_target_to_positioner(other_pos, t2):
+                        this_pos.assign_target(t1)
+                        return True
 
         # Failure - put this positioner back to where it was
         this_pos.pose([theta1, theta2])
+        return False
