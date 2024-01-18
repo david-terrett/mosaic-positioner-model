@@ -7,9 +7,18 @@ but boost geometry is an include file only library so all that is required
 is that the boost include files are installed; there is no need to build the
 boost binary libraries.
 
+# Unpacking
+
+If you received the software as a git bundle (positioner_model.bundle) you
+unpack it with:
+
+    git clone positioner_model.bundle -b main
+
+This will create a directory positioner_model containing the source code.
+
 # Installation with cmake
 
-    cd src
+    cd positioner_model
     mkdir build
     cd build
     cmake .. -DCMAKE_INSTALL_PREFIX=somwhere_on_PYTHONPATH
