@@ -1,5 +1,6 @@
 # -*- coding utf-8 -*-
 
+import csv
 from math import floor
 from random import random
 
@@ -121,6 +122,22 @@ class focal_plane(object):
         self.add_targets_to_positioners(self.targets)
 
 
+    def load_targets(self, csvfile):
+        """
+        Load targets from a CVS file
+
+        Parameters
+        ----------
+        csvfile : file
+            File to load from
+        """
+        reader = csv.DictReader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
+        #next(reader)
+        for row in reader:
+            self.targets.append(target(row['X'], row['Y']))
+        self.add_targets_to_positioners(self.targets)
+
+
     def plot(self, plt):
         """
         Plot positioners
@@ -132,6 +149,22 @@ class focal_plane(object):
             plt.plot(t.position.x(), t.position.y(), '.', color='black',
                      markersize=1.0)
         return plt
+
+
+    def save_targets(self, csvfile):
+        """
+        Save targets to a CSV file
+
+        Parameters
+        ----------
+        csvfile : file
+            File to save to
+        """
+        writer = csv.DictWriter(csvfile, fieldnames=['X', 'Y'],
+                                quoting=csv.QUOTE_NONNUMERIC)
+        writer.writeheader()
+        for t in self.targets:
+            writer.writerow({'X': t.position.x(), 'Y': t.position.y()})
 
 
     def simple_allocator(self):
