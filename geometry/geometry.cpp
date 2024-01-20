@@ -58,29 +58,68 @@ extern "C" PyObject* point_repr(PointObject* self, PyObject*) {
     std::ostringstream repr;
     repr << std::setprecision(16);
     repr << "point(" << self->point->x() << "," << self->point->y() << ")";
-    return PyUnicode_DecodeUTF8(repr.str().c_str(), repr.str().size(), nullptr);
+    return (PyObject*)PyUnicode_DecodeUTF8(repr.str().c_str(),
+            repr.str().size(), nullptr);
 }
 
 // point methods
 static PyMethodDef point_methods[] = {
     {"x", (PyCFunction)point_x, METH_NOARGS, "Return x"},
     {"y", (PyCFunction)point_y, METH_NOARGS, "Return y"},
-    {nullptr}
+    {nullptr, nullptr, 0, nullptr}
 };
 
 // point type definition
 static PyTypeObject PointType = {
-    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
+    .ob_base = PyVarObject_HEAD_INIT(nullptr, 0)
     .tp_name = "geometry.point",
     .tp_basicsize = sizeof(PointObject),
     .tp_itemsize = 0,
     .tp_dealloc =(destructor)point_dealloc,
+    .tp_vectorcall_offset = 0,
+    .tp_getattr = (getattrfunc)nullptr,
+    .tp_setattr = (setattrfunc)nullptr,
+    .tp_as_async = (PyAsyncMethods*)nullptr,
     .tp_repr = (reprfunc)point_repr,
+    .tp_as_number = (PyNumberMethods*)nullptr,
+    .tp_as_sequence = (PySequenceMethods*)nullptr,
+    .tp_as_mapping = (PyMappingMethods*)nullptr,
+    .tp_hash = (hashfunc)nullptr,
+    .tp_call = (ternaryfunc)nullptr,
+    .tp_str = (reprfunc)nullptr,
+    .tp_getattro = (getattrofunc)nullptr,
+    .tp_setattro = (setattrofunc)nullptr,
+    .tp_as_buffer = (PyBufferProcs*)nullptr,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = PyDoc_STR("point objects"),
+    .tp_traverse = (traverseproc)nullptr,
+    .tp_clear = (inquiry)nullptr,
+    .tp_richcompare = (richcmpfunc)nullptr,
+    .tp_weaklistoffset = 0,
+    .tp_iter = (getiterfunc)nullptr,
+    .tp_iternext = (iternextfunc)nullptr,
     .tp_methods = point_methods,
+    .tp_members = (struct PyMemberDef*)nullptr,
+    .tp_getset = (struct PyGetSetDef*)nullptr,
+    .tp_base = (PyTypeObject*)nullptr,
+    .tp_dict = (PyObject*)nullptr,
+    .tp_descr_get = (descrgetfunc)nullptr,
+    .tp_descr_set = (descrsetfunc)nullptr,
+    .tp_dictoffset = 0,
     .tp_init = (initproc)point_init,
-    .tp_new = point_new
+    .tp_alloc = (allocfunc)nullptr,
+    .tp_new = point_new,
+    .tp_free = (freefunc)nullptr,
+    .tp_is_gc = (inquiry)nullptr,
+    .tp_bases = (PyObject*)nullptr,
+    .tp_mro = (PyObject*)nullptr,
+    .tp_cache = (PyObject*)nullptr,
+    .tp_subclasses = nullptr,
+    .tp_weaklist = (PyObject*)nullptr,
+    .tp_del = (destructor)nullptr,
+    .tp_version_tag = 0,
+    .tp_finalize = (destructor)nullptr,
+    .tp_vectorcall = (vectorcallfunc)nullptr
 };
 
 // polygon object definition
@@ -152,20 +191,60 @@ static PyMethodDef polygon_methods[] = {
     {"x", (PyCFunction)polygon_x, METH_NOARGS, "Return list of x coordinates"},
     {"y", (PyCFunction)polygon_y, METH_NOARGS, "Return list of y coordinates"},
     {"points", (PyCFunction)polygon_points, METH_NOARGS, "Return list of points"},
-    {nullptr}
+    {nullptr, nullptr, 0, nullptr}
 };
 
 // polygon type definition
 static PyTypeObject PolygonType = {
-    .ob_base = PyVarObject_HEAD_INIT(NULL, 0)
+    .ob_base = PyVarObject_HEAD_INIT(nullptr, 0)
     .tp_name = "geometry.polygon",
     .tp_basicsize = sizeof(PolygonObject),
     .tp_itemsize = 0,
     .tp_dealloc =(destructor)polygon_dealloc,
+    .tp_vectorcall_offset = 0,
+    .tp_getattr = (getattrfunc)nullptr,
+    .tp_setattr = (setattrfunc)nullptr,
+    .tp_as_async = (PyAsyncMethods*)nullptr,
+    .tp_repr = (reprfunc)nullptr,
+    .tp_as_number = (PyNumberMethods*)nullptr,
+    .tp_as_sequence = (PySequenceMethods*)nullptr,
+    .tp_as_mapping = (PyMappingMethods*)nullptr,
+    .tp_hash = (hashfunc)nullptr,
+    .tp_call = (ternaryfunc)nullptr,
+    .tp_str = (reprfunc)nullptr,
+    .tp_getattro = (getattrofunc)nullptr,
+    .tp_setattro = (setattrofunc)nullptr,
+    .tp_as_buffer = (PyBufferProcs*)nullptr,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = PyDoc_STR("polygon objects"),
+    .tp_traverse = (traverseproc)nullptr,
+    .tp_clear = (inquiry)nullptr,
+    .tp_richcompare = (richcmpfunc)nullptr,
+    .tp_weaklistoffset = 0,
+    .tp_iter = (getiterfunc)nullptr,
+    .tp_iternext = (iternextfunc)nullptr,
     .tp_methods = polygon_methods,
-    .tp_new = polygon_new
+    .tp_members = (struct PyMemberDef*)nullptr,
+    .tp_getset = (struct PyGetSetDef*)nullptr,
+    .tp_base = (PyTypeObject*)nullptr,
+    .tp_dict = (PyObject*)nullptr,
+    .tp_descr_get = (descrgetfunc)nullptr,
+    .tp_descr_set = (descrsetfunc)nullptr,
+    .tp_dictoffset = 0,
+    .tp_init = (initproc)nullptr,
+    .tp_alloc = (allocfunc)nullptr,
+    .tp_new = polygon_new,
+    .tp_free = (freefunc)nullptr,
+    .tp_is_gc = (inquiry)nullptr,
+    .tp_bases = (PyObject*)nullptr,
+    .tp_mro = (PyObject*)nullptr,
+    .tp_cache = (PyObject*)nullptr,
+    .tp_subclasses = nullptr,
+    .tp_weaklist = (PyObject*)nullptr,
+    .tp_del = (destructor)nullptr,
+    .tp_version_tag = 0,
+    .tp_finalize = (destructor)nullptr,
+    .tp_vectorcall = (vectorcallfunc)nullptr
 };
 
 // distance function
@@ -203,7 +282,7 @@ extern "C" PyObject* intersects(PyObject*, PyObject* args) {
 static PyMethodDef geometry_methods[] = {
     {"distance", (PyCFunction)distance, METH_VARARGS, "distance between points"},
     {"intersects", (PyCFunction)intersects, METH_VARARGS, "polygons intersect"},
-    {nullptr}
+    {nullptr, nullptr, 0, nullptr}
 };
 
 // geometry module definition
@@ -212,7 +291,11 @@ static PyModuleDef geometrymodule = {
     .m_name = "geometry",
     .m_doc = "minimal interface to boost geometry.",
     .m_size = -1,
-    .m_methods = geometry_methods
+    .m_methods = geometry_methods,
+    .m_slots = (PyModuleDef_Slot*)0,
+    .m_traverse = (traverseproc)0,
+    .m_clear = (inquiry)0,
+    .m_free = (freefunc)0
 };
 
 // geometry module init function
@@ -224,8 +307,8 @@ PyMODINIT_FUNC PyInit_geometry(void)
 
     // Create module
     PyObject* m = PyModule_Create(&geometrymodule);
-    if (m == NULL)
-        return NULL;
+    if (m == nullptr)
+        return nullptr;
 
     // Add types
     Py_INCREF(&PointType);
