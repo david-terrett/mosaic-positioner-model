@@ -12,7 +12,7 @@ find_package(Python 3.7
     COMPONENTS Interpreter Development REQUIRED
 )
 
-add_library(geometry SHARED
+Python_add_library(geometry SHARED
     geometry.cpp
 )
 
@@ -20,8 +20,6 @@ target_include_directories(geometry PRIVATE
     "${Python_INCLUDE_DIRS}"
     "${Boost_INCLUDE_DIRS}"
 )
-
-target_link_libraries(geometry "${Python_LIBRARIES}")
 
 add_compile_definitions(BOOST_GEOMETRY_DISABLE_DEPRECATED_03_WARNING)
 add_compile_definitions(BOOST_ALLOW_DEPRECATED_HEADERS)
