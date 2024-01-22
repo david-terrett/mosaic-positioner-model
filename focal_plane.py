@@ -1,6 +1,7 @@
 # -*- coding utf-8 -*-
 
 import csv
+import matplotlib.pyplot as plt
 from math import floor
 from random import random
 
@@ -138,7 +139,7 @@ class focal_plane(object):
         self.add_targets_to_positioners(self.targets)
 
 
-    def plot(self, plt):
+    def plot(self):
         """
         Plot positioners
         """
@@ -148,7 +149,6 @@ class focal_plane(object):
         for t in self.targets:
             plt.plot(t.position.x(), t.position.y(), '.', color='black',
                      markersize=1.0)
-        return plt
 
 
     def save_targets(self, csvfile):
