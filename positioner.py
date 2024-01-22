@@ -43,7 +43,7 @@ class positioner(object):
     """
 
 
-    def __init__(self, position):
+    def __init__(self, position, id):
         """
         Create positioner
 
@@ -52,6 +52,7 @@ class positioner(object):
         position : point
             position of positioner axis 1 in focal plane
         """
+        self.id = id
         self.targets = {}
         self.target = None
 
@@ -201,7 +202,7 @@ class positioner(object):
 
         Returns
         -------
-        Boolean
+        : boolean
             True if the positioners collide
         """
         if other is self:

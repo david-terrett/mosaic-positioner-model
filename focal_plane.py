@@ -77,6 +77,22 @@ class focal_plane(object):
             for t in targets:
                 p.add_target(t)
 
+    def check(self):
+        """
+        Check that the configuration is valid
+
+        Returns
+        -------
+        : boolean
+            True if there are no collisions
+        """
+        for p in self.positioners:
+            if self._has_collision(p):
+                return False
+        return True
+
+
+
 
     def clear_targets(self):
         """
@@ -167,9 +183,14 @@ class focal_plane(object):
             writer.writerow({'X': t.position.x(), 'Y': t.position.y()})
 
 
-    def simple_allocator(self):
+    def simple_allocator(self, swapper=True):
         """
         Simple target to positioner assignment alogorithm
+
+        Paramters
+        ---------
+            swapper : boolean
+                Run the swapper after the initial allocation
         """
         self.clear_target_assignments()
 
@@ -193,7 +214,8 @@ class focal_plane(object):
             alloc = self.allocated
 
         # Now runner the swapper
-        self.swapper()
+        if swapper:
+            self.swapper()
 
     def swapper(self):
         """
@@ -220,7 +242,8 @@ class focal_plane(object):
 
 
     def _add_positioner(self, i, j):
-        self.positioners.append(positioner(point(i * self._dx, j * self._dy)))
+        self.positioners.append(positioner(point(i * self._dx, j * self._dy),
+                                           len(self.positioners)))
 
 
     def _assign_target_to_positioner(self, pos, t):
@@ -272,8 +295,12 @@ class focal_plane(object):
                     this_pos.pose(this_pos.targets[t1][0])
                 for p in self.positioners:
                     if p is not other_pos:
-                        if not p.collides_with(this_pos):
+                        if p.collides_with(this_pos):
                             break
+
+                # If we found a collision try the next target
+                if p:
+                    continue
 
                 # We have found a target for this positioner so now look
                 # for one for the positioner we are trying swapping with
