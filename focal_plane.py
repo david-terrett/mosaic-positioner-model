@@ -1,9 +1,10 @@
 # -*- coding utf-8 -*-
 
 import csv
-import matplotlib.pyplot as plt
 from math import floor
+from math import inf
 from random import random
+import matplotlib.pyplot as plt
 
 from geometry import point
 from positioner import positioner
@@ -165,6 +166,34 @@ class focal_plane(object):
         for t in self.targets:
             plt.plot(t.position.x(), t.position.y(), '.', color='black',
                      markersize=1.0)
+
+
+    def positioner_at(self, x, y):
+        """
+        Find the positioner closest to a given point
+
+        Parameters
+        ----------
+        x : float
+            x position
+        y : float
+            y position
+
+        Returns
+        -------
+        : positioner
+            The positioner closest to x,y
+        """
+        min_d2 = inf
+        pos = None
+        for p in self.positioners:
+            d2 = ((p.position.x() - x) * (p.position.x() - x) +
+               (p.position.y() - y) * (p.position.y() - y))
+            if d2 < min_d2:
+                min_d2 = d2
+                pos = p
+        return pos
+
 
 
     def save_targets(self, csvfile):

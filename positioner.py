@@ -52,6 +52,7 @@ class positioner(object):
         position : point
             position of positioner axis 1 in focal plane
         """
+        self.position = position
         self.id = id
         self.targets = {}
         self.target = None
