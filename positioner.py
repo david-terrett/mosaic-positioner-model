@@ -76,7 +76,9 @@ class positioner(object):
         arm_2 = polygon()
         arm_2.append(point(w/2.0, 10.0))
         arm_2.append(point(-w/2.0, 10.0))
-        arm_2.append(point(-w/2.0, -57.0 - 10.0))
+        arm_2.append(point(-w/2.0, -57.0 - 10.0 + w))
+        arm_2.append(point(-w -w/2.0, -57.0 - 10.0 + w))
+        arm_2.append(point(-w -w/2.0, -57.0 - 10.0))
         arm_2.append(point(w/2.0, -57.0 - 10.0))
         arm_2.append(point(w/2.0, 10.0))
 
