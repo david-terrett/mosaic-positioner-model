@@ -60,29 +60,33 @@ class positioner(object):
         # Define the rotation axis of arm 1 for a positioner at placed at 0,0
         axis_1 = point(0.0, 0.0)
 
-        # Construct outline of lower positioner arm in the park position (angle 90)
+        # Construct outline of lower positioner arm in the initial position
+        # (angle 90, so parallel to the Y axis)
         arm_1 = polygon()
-        w = 24.7
+        w = 24.7 / 2.0
         l1 = 39.8
         l2 = w/2.0
-        arm_1.append(point(w/2.0, -l2))
-        arm_1.append(point(w/2.0, l1))
-        arm_1.append(point(-w/2.0, l1))
-        arm_1.append(point(-w/2.0, -l2))
-        arm_1.append(point(w/2.0, -l2))
+        arm_1.append(point(w, -l2))
+        arm_1.append(point(w, l1))
+        arm_1.append(point(-w, l1))
+        arm_1.append(point(-w, -l2))
+        arm_1.append(point(w, -l2))
 
         # Position of arm2 rotation axis when arm 1 is parked
         axis_2 = point(0.0, 27.7)
 
-        # Outline of arm 2 with axis at 0.0 and angle -90.
+        # Outline of arm 2 with axis at 0.0 and angle -90 (so folded
+        # back on top of the lower arm).
         arm_2 = polygon()
-        arm_2.append(point(w/2.0, 10.0))
-        arm_2.append(point(-w/2.0, 10.0))
-        arm_2.append(point(-w/2.0, -57.0 - 10.0 + w))
-        arm_2.append(point(-w -w/2.0, -57.0 - 10.0 + w))
-        arm_2.append(point(-w -w/2.0, -57.0 - 10.0))
-        arm_2.append(point(w/2.0, -57.0 - 10.0))
-        arm_2.append(point(w/2.0, 10.0))
+        l1 = 57.0
+        l2 = 10.0
+        arm_2.append(point(w, l2))
+        arm_2.append(point(-w, l2))
+        arm_2.append(point(-w, -l1 - l2 + w * 2.0))
+        arm_2.append(point(-w * 3.0, -l1 - l2 + w * 2.0))
+        arm_2.append(point(-w * 3.00, -l1 - l2))
+        arm_2.append(point(w, -l1 - l2))
+        arm_2.append(point(w, l2))
 
         # Fibre position
         fiber = point(0.0, -57.0)
@@ -98,7 +102,7 @@ class positioner(object):
         self._arm_2_base = move_polygon(arm_2, position.x(), position.y())
         self._fiber_base = move_point(fiber, position.x(), position.y())
 
-        # Set the axes to the angles we used for construction
+        # Set the axes to the angles we used when defining the geometry
         self._theta_1_base = pi/2.0
         self._theta_2_base = -pi/2.0
 
