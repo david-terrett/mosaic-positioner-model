@@ -150,7 +150,6 @@ class focal_plane(object):
             File to load from
         """
         reader = csv.DictReader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
-        #next(reader)
         for row in reader:
             self.targets.append(target(row['X'], row['Y']))
         self.add_targets_to_positioners(self.targets)
@@ -195,6 +194,26 @@ class focal_plane(object):
         return pos
 
 
+    def report(self):
+        """
+        Print stuff about the state of the positioner
+        """
+        print("{0} positioners out of {1} don't have a target allocated".
+              format(len(self.positioners) - self.allocated,
+              len(self.positioners)))
+        unreachable = 0
+        one_target = 0
+        for p in self.positioners:
+            if len(p.targets) == 0:
+                unreachable += 1
+            elif len(p.targets) == 1:
+                one_target += 1
+        if unreachable > 0:
+            print(f"of these {unreachable} can't reach any targets")
+        else:
+            print("all positioners can reach at least one target")
+        print(f"and {one_target} can reach only one target")
+
 
     def save_targets(self, csvfile):
         """
@@ -212,7 +231,7 @@ class focal_plane(object):
             writer.writerow({'X': t.position.x(), 'Y': t.position.y()})
 
 
-    def simple_allocator(self, swapper=True):
+    def simple_allocator(self):
         """
         Simple target to positioner assignment alogorithm
 
@@ -242,9 +261,6 @@ class focal_plane(object):
                 break
             alloc = self.allocated
 
-        # Now runner the swapper
-        if swapper:
-            self.swapper()
 
     def swapper(self):
         """
