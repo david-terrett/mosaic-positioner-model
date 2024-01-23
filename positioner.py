@@ -143,6 +143,7 @@ class positioner(object):
         """
         if self.can_reach(t.position):
             self.targets[t] = self._arm_angles(t.position)
+            t.reachable.append(self)
         else:
             return False
         return True

@@ -78,6 +78,13 @@ class focal_plane(object):
             for t in targets:
                 p.add_target(t)
 
+        # Remove any targets that can't be reached by any positioner
+        targets = []
+        for t in self.targets:
+            if len(t.reachable):
+                targets.append(t)
+        self.targets = targets
+
     def check(self):
         """
         Check that the configuration is valid
@@ -91,8 +98,6 @@ class focal_plane(object):
             if self._has_collision(p):
                 return False
         return True
-
-
 
 
     def clear_targets(self):
@@ -198,6 +203,7 @@ class focal_plane(object):
         """
         Print stuff about the state of the positioner
         """
+        print(f"there are {len(self.targets)} in the field")
         print("{0} positioners out of {1} don't have a target allocated".
               format(len(self.positioners) - self.allocated,
               len(self.positioners)))
@@ -250,8 +256,15 @@ class focal_plane(object):
         alloc = self.allocated
         while self.allocated < len(self.positioners):
             for pos in positioners:
+
+                # If this positioner doesn't have a target
                 if not pos.target:
-                    for t in [*pos.targets]:
+
+                    # Sort the list of potential targets so that we try the
+                    # ones with the fewest positioners that can reach it first
+                    targets = sorted([*pos.targets],
+                                     key=lambda t: len(t.reachable))
+                    for t in targets:
                         if not t.positioner:
                             if self._assign_target_to_positioner(pos, t):
                                 break

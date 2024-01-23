@@ -15,6 +15,9 @@ class target(object):
 
         positioner : positioner
             The positioner assigned to this target (can be None)
+
+        reachable : [positioner]
+            A list of the postioners that can reach this target
     """
 
     def __init__(self, x, y):
@@ -28,3 +31,4 @@ class target(object):
         """
         self.position = point(x, y)
         self.positioner = None
+        self.reachable = []
