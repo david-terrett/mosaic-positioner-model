@@ -203,7 +203,7 @@ class focal_plane(object):
         """
         Print stuff about the state of the positioner
         """
-        print(f"there are {len(self.targets)} in the field")
+        print(f"there are {len(self.targets)} targets in the field")
         print("{0} positioners out of {1} don't have a target allocated".
               format(len(self.positioners) - self.allocated,
               len(self.positioners)))
