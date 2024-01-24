@@ -12,42 +12,98 @@ boost binary libraries.
 If you received the software as a git bundle (positioner_model.bundle) you
 unpack it with:
 
-    git clone positioner_model.bundle -b main
+    $ git clone positioner_model.bundle -b main
 
 This will create a directory positioner_model containing the source code.
 
+To update an existing copy from a new bundle
+
+    $ git pull positioner_model.bundle main
+
 # Installation with cmake
 
-    cd positioner_model
-    mkdir build
-    cd build
-    cmake .. -DCMAKE_INSTALL_PREFIX=somwhere_on_PYTHONPATH
-    cmake --build .
-    cmake --install .
+    $ cd positioner_model
+    $ mkdir build
+    $ cd build
+    $ cmake .. -DCMAKE_INSTALL_PREFIX=somewhere_on_PYTHONPATH
+    $ cmake --build .
+    $ cmake --install .
 
 If you have boost or Python installed in an unconventional place you may
 also have to define BOOST_DIR, BOOST_INCLUDEDIR and/or Python_ROOT_DIR.
 
+# Issue with anaconda
+
+The supplied cmake file does not build the geometry library correctly for
+use with anaconda.
+
 # Example
 
-    from focal_plane import focal_plane
+    >>> from focal_plane import focal_plane
 
-    # Create a focal_plane
-    fp = focal_plane()
+    >>> # Create a focal_plane
+    >>> fp = focal_plane()
 
-    # Create some targets and compute which are reachable by each positioner.
-    # density is per square arcmin.
-    fp.create_random_targets(density=10)
+    >>> # Create some targets and compute which are reachable by each
+    >>> # positioner. density is per square arcmin.
+    >>> fp.create_random_targets(density=10)
 
-    # See how many targets were created
-    print(len(fp.targets))
+    >>> # See how many targets were created
+    >>> print(len(fp.targets))
 
-    # Run the simple allocation algorithm
-    fp.simple_allocator()
+    >>> # Run the simple allocation algorithm (takes several seconds)
+    >>> fp.simple_allocator()
 
-    # See how many positions are left without targets
-    print(len(fp.positioners) - fp.allocated)
+    >>> # Print a summary of the allocations
+    >>> fp.report()
 
-    # Plot - fibers without targets are plotted in red.
-    import matplotlib.pyplot as plt
-    fp.plot(plt).show()
+    >>> # Plot - fibers without targets are plotted in red.
+    >>> import matplotlib.pyplot as plt
+    >>> fp.plot()
+    >>> plt.show()
+
+    >>> # Get help on the focal plane model classes.
+    >>> import focal_plane
+    >>> help(focal_plane.focal_plane)
+    >>> help(focal_plane.target)
+    >>> help(focal_plane.positioner)
+
+# The simple allocator
+
+The simple_allocator method implements the following algorithm:
+
+- Sort the positioners into ascending order of the number of targets
+  the positioner can reach.
+
+- For each positioner not yet allocated a target, sort the targets into
+  ascending order of the number of positioners that can reach it and
+  try placing the fiber on each target in both possible configurations
+  until one that doesn't collide with another positioner is found.
+
+- Repeat step 2 until no more targets can be assigned
+
+# Contributing updates
+
+If you fix any bugs or make enhancements that you want merged into the model,
+please follow the following procedure.
+
+If you are new to git, set your name and email address
+
+    $ git config --global user.name "John Doe"
+    $ git config --global user.email johndoe@example.com
+
+Create a branch for your changes
+
+    $ cd positioner_model
+    $ git branch your_branch_name
+
+Commit the files you have modified
+
+    $ git add files_you_have_modified
+    $ git commit
+
+Create a git bundle of your repository
+
+    $ git bundle positioner_model.bundle your_branch name
+
+email the bundle file to david.terrett@ntlworld.com.
