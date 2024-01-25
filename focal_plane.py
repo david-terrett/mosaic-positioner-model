@@ -64,8 +64,13 @@ class focal_plane(object):
     # empty list of targets
         self.targets = []
 
+    # No plot yet
+        self.figure = None
+        self.axes = None
+        self._target_markers = []
 
-    def add_targets_to_positioners(self, targets):
+
+    def add_targets(self, targets):
         """
         Add targets to the positioners
 
@@ -79,11 +84,14 @@ class focal_plane(object):
                 p.add_target(t)
 
         # Remove any targets that can't be reached by any positioner
-        targets = []
-        for t in self.targets:
+        for t in targets:
             if len(t.reachable):
-                targets.append(t)
-        self.targets = targets
+                self.targets.append(t)
+
+        # Plot the new targets
+        if self.figure:
+            self._plot_targets()
+
 
     def check(self):
         """
@@ -102,10 +110,15 @@ class focal_plane(object):
 
     def clear_targets(self):
         """
-        Remove targets from all positioners
+        Remove all targets
         """
         for pos in self.positioners:
             pos.clear_targets()
+        for p in self._target_markers:
+            p[0].remove()
+        self._target_markers = []
+        self.targets = []
+        self.allocated = 0
 
 
     def clear_target_assignments(self):
@@ -138,11 +151,12 @@ class focal_plane(object):
         # Number of targets to create
         n = int(density * area / 3600.0)
 
+        targets = []
         for i in range(0, n):
             x = self._x_min + random() * (self._x_max - self._x_min)
             y = self._y_min + random() * (self._y_max - self._y_min)
-            self.targets.append(target(x, y))
-        self.add_targets_to_positioners(self.targets)
+            targets.append(target(x, y))
+        self.add_targets(targets)
 
 
     def load_targets(self, csvfile):
@@ -155,21 +169,27 @@ class focal_plane(object):
             File to load from
         """
         reader = csv.DictReader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
+        targets = []
         for row in reader:
-            self.targets.append(target(row['X'], row['Y']))
-        self.add_targets_to_positioners(self.targets)
+            targets.append(target(row['X'], row['Y']))
+        self.add_targets(targets)
 
 
     def plot(self):
         """
         Plot positioners
         """
-        plt.gca().set_aspect('equal')
+        if not self.figure:
+            self.figure = plt.figure()
+            self.axes = self.figure.subplots()
+            self.figure.gca().set_aspect('equal')
+            self.figure.gca().axis([-1300.0, 1300.0, -1000.0, 1000.0])
         for p in self.positioners:
-            p.plot(plt)
-        for t in self.targets:
-            plt.plot(t.position.x(), t.position.y(), '.', color='black',
-                     markersize=1.0)
+            p.plot(self.axes)
+
+        # Plot the targets
+        if self.figure:
+            self._plot_targets()
 
 
     def positioner_at(self, x, y):
@@ -239,12 +259,7 @@ class focal_plane(object):
 
     def simple_allocator(self):
         """
-        Simple target to positioner assignment alogorithm
-
-        Paramters
-        ---------
-            swapper : boolean
-                Run the swapper after the initial allocation
+        Simple target to positioner assignment algorithm
         """
         self.clear_target_assignments()
 
@@ -321,6 +336,10 @@ class focal_plane(object):
                 pos.pose([current_theta_1, current_theta_2])
                 return False
         self.allocated += 1
+        if self.figure:
+            pos.plot(self.axes)
+            plt.draw()
+            plt.pause(0.001)
         return True
 
 
@@ -329,6 +348,16 @@ class focal_plane(object):
             if p.collides_with(pos):
                 return True
         return False
+
+
+    def _plot_targets(self):
+        for m in self._target_markers:
+            m.remove()
+        self._target_markers = []
+        for t in self.targets:
+            self._target_markers.append(self.axes.plot(t.position.x(),
+                                        t.position.y(), '.', color='black',
+                                        markersize=1.0))
 
 
     def _try_swap(self, this_pos, alt):

@@ -56,6 +56,7 @@ class positioner(object):
         self.id = id
         self.targets = {}
         self.target = None
+        self.d = []
 
         # Define the rotation axis of arm 1 for a positioner at placed at 0,0
         axis_1 = point(0.0, 0.0)
@@ -91,11 +92,11 @@ class positioner(object):
         # Fibre position
         fiber = point(0.0, -57.0)
 
-        # Move arm 2 onto its axis postion
+        # Move arm 2 onto its axis position
         arm_2 = move_polygon(arm_2, axis_2.x(), axis_2.y())
         fiber = move_point(fiber, axis_2.x(), axis_2.y())
 
-        # Move everything to the postioner's position
+        # Move everything to the positioner's position
         self._axis_1_base = move_point(axis_1, position.x(), position.y())
         self._arm_1_base = move_polygon(arm_1, position.x(), position.y())
         self._axis_2_base = move_point(axis_2, position.x(), position.y())
@@ -183,7 +184,7 @@ class positioner(object):
         Returns
         -------
         : boolean
-            True if the fiber can be postioned at the specified point
+            True if the fiber can be positioned at the specified point
         """
         r2 = ((p.x() - self._axis_1_base.x()) * (p.x() - self._axis_1_base.x()) +
               (p.y() - self._axis_1_base.y()) * (p.y() - self._axis_1_base.y()))
@@ -200,7 +201,7 @@ class positioner(object):
 
     def collides_with(self, other):
         """
-        Postioner collides with another
+        Positioner collides with another
 
         Parameters
         ----------
@@ -223,30 +224,45 @@ class positioner(object):
         self.pose([0.0, pi])
 
 
-    def plot(self, plt):
+    def plot(self, ax):
         """
         Plot the positioner outline
+
+        Parameters
+        ----------
+            ax : matplotlib.Axes
+                plot axes
         """
-        plt.plot(self.arm_1.x(), self.arm_1.y(), color='gray')
-        plt.plot(self.arm_2.x(), self.arm_2.y(), color='black')
-        plt.plot(self._axis_1_base.x(), self._axis_1_base.y(), '+', color='black',
-                 markersize=4.0)
-        plt.plot(self.axis_2.x(), self.axis_2.y(), '+', color='black',
-                 markersize=4.0)
+        # Delete existing drawing
+        for d in self.d:
+            d[0].remove()
+        self.d = []
+
+        # Draw the arms
+        self.d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
+        self.d.append(ax.plot(self.arm_2.x(), self.arm_2.y(), color='black'))
+
+        # Draw the axes
+        self.d.append(ax.plot(self._axis_1_base.x(), self._axis_1_base.y(),
+                              '+', color='black', markersize=4.0))
+        self.d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
+                              color='black', markersize=4.0))
         if self.target:
             c = 'blue'
         else:
             c = 'red'
-        plt.plot(self.fiber.x(), self.fiber.y(), 'o', color=c,
-                 markersize=4.0)
+
+        # Draw the fiber
+        self.d.append(ax.plot(self.fiber.x(), self.fiber.y(), 'o', color=c,
+                      markersize=4.0))
 
 
     def pose(self, theta):
         """
         Set the axis positions
 
-        Parmeters
-        ---------
+        Parameters
+        ----------
         theta : list[float]
             Axis angles (radians)
         """
