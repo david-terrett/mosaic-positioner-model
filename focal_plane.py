@@ -344,7 +344,7 @@ class focal_plane(object):
             # set up the move sequence
             _tdest = [pos.theta_1,pos.theta_2]
             pos.pose([current_theta_1,current_theta_2])
-            pos.trajectory_from_park(_tdest)
+            pos.trajectory_from_park_simultaneous(_tdest)
             xmin = pos._axis_1_base.x()-120
             xmax = pos._axis_1_base.x()+120
             ymin = pos._axis_1_base.y()-120
