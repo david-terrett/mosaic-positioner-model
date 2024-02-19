@@ -64,7 +64,7 @@ class positioner(object):
         # Construct outline of lower positioner arm in the initial position
         # (angle 90, so parallel to the Y axis)
         arm_1 = polygon()
-        
+
         #        w = 24.7 / 2.0
         #        l1 = 39.8
         #        l2 = w/2.0
@@ -92,7 +92,7 @@ class positioner(object):
             xx = -l2*cos(t)
             yy = -l2*sin(t)
             arm_1.append(point(xx,yy))
-        
+
         # Position of arm2 rotation axis when arm 1 is parked
         axis_2 = point(0.0, 28.5)
 
@@ -157,6 +157,9 @@ class positioner(object):
         self._arm_1_angle_offset = atan2(axis_2.y(), axis_2.x()) - pi/2.0
         self._arm_2_angle_offset = atan2(fiber.y() - axis_2.y(),
                                         fiber.x() - axis_2.x()) + pi/2.0
+
+        # Positioners that are more than this distance apart can't collide.
+        self.safe_separation = 150.0
 
         # Park the positioner
         self.park()
@@ -249,6 +252,11 @@ class positioner(object):
         """
         if other is self:
             return False
+        dx = self._axis_1_base.x() - other._axis_1_base.x()
+        dy = self._axis_1_base.y() - other._axis_1_base.y()
+        safe_sep = self.safe_separation + other.safe_separation
+        if ( dx * dx + dy * dy ) > safe_sep * safe_sep:
+            return False
         return (intersects(self.arm_1, other.arm_1) or
                 intersects(self.arm_2, other.arm_2))
 
@@ -325,13 +333,14 @@ class positioner(object):
         if (angle < 0):
             angle = abs(angle) + 2*(np.pi-abs(angle))
         return angle
-            
+
 
     def trajectory_from_park_sequential(self,theta):
         """
-        Move lower arm in 50 steps to destination, then move upper arm in 50 steps to destination
+        Move lower arm in 50 steps to destination, then move upper arm in 50
+        steps to destination
         """
-    
+
         _t1end = theta[0]
         _t2end = theta[1]
         _t1start = self.theta_1
@@ -361,7 +370,7 @@ class positioner(object):
     def set_next_pose(self,i):
         self.pose(self.poses[i])
         return
-    
+
     def pose(self, theta):
         """
         Set the axis positions

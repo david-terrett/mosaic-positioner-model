@@ -104,6 +104,6 @@ Commit the files you have modified
 
 Create a git bundle of your repository
 
-    $ git bundle positioner_model.bundle your_branch name
+    $ git bundle create positioner_model.bundle your_branch name
 
 email the bundle file to david.terrett@ntlworld.com.
