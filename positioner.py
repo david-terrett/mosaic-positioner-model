@@ -64,30 +64,65 @@ class positioner(object):
         # Construct outline of lower positioner arm in the initial position
         # (angle 90, so parallel to the Y axis)
         arm_1 = polygon()
-        w = 24.7 / 2.0
-        l1 = 39.8
-        l2 = w/2.0
-        arm_1.append(point(w, -l2))
-        arm_1.append(point(w, l1))
-        arm_1.append(point(-w, l1))
-        arm_1.append(point(-w, -l2))
-        arm_1.append(point(w, -l2))
+        
+        #        w = 24.7 / 2.0
+        #        l1 = 39.8
+        #        l2 = w/2.0
+        #        arm_1.append(point(w, -l2))
+        #        arm_1.append(point(w, l1))
+        #        arm_1.append(point(-w, l1))
+        #        arm_1.append(point(-w, -l2))
+        #        arm_1.append(point(w, -l2))
 
+        w = 25 / 2.0
+        l1 = 28.5
+        l2 = w
+        semicirc_points=6
+        arm_1.append(point(w, 0))
+        arm_1.append(point(w, l1))
+        for i in range(0,semicirc_points+1):
+            t=pi*float(i)/semicirc_points
+            xx=l2*cos(t)
+            yy=l1+l2*sin(t)
+            arm_1.append(point(xx,yy))
+        arm_1.append(point(-w, l1))
+        arm_1.append(point(-w, 0))
+        for i in range(0,semicirc_points+1):
+            t = pi*float(i)/semicirc_points
+            xx = -l2*cos(t)
+            yy = -l2*sin(t)
+            arm_1.append(point(xx,yy))
+        
         # Position of arm2 rotation axis when arm 1 is parked
-        axis_2 = point(0.0, 27.7)
+        axis_2 = point(0.0, 28.5)
 
         # Outline of arm 2 with axis at 0.0 and angle -90 (so folded
         # back on top of the lower arm).
         arm_2 = polygon()
         l1 = 57.0
-        l2 = 10.0
-        arm_2.append(point(w, l2))
-        arm_2.append(point(-w, l2))
-        arm_2.append(point(-w, -l1 - l2 + w * 2.0))
-        arm_2.append(point(-w * 3.0, -l1 - l2 + w * 2.0))
-        arm_2.append(point(-w * 3.00, -l1 - l2))
-        arm_2.append(point(w, -l1 - l2))
-        arm_2.append(point(w, l2))
+        l2 = 12.5
+
+        #        arm_2.append(point(w, l2))
+        #        arm_2.append(point(-w, l2))
+        #        arm_2.append(point(-w, -l1 - l2 + w * 2.0))
+        #        arm_2.append(point(-w * 3.0, -l1 - l2 + w * 2.0))
+        #        arm_2.append(point(-w * 3.00, -l1 - l2))
+        #        arm_2.append(point(w, -l1 - l2))
+        #        arm_2.append(point(w, l2))
+
+        for i in range(0,semicirc_points+1):
+            t = pi*float(i)/semicirc_points
+            xx = l2*cos(t)
+            yy = l2*sin(t)
+            arm_2.append(point(xx,yy))
+        arm_2.append(point(-w, -l1))
+        for i in range(0,semicirc_points+1):
+            t = pi*float(i)/semicirc_points
+            xx = -l2*cos(t)
+            yy = -l1-l2*sin(t)
+            arm_2.append(point(xx,yy))
+        arm_2.append(point(w, -l1))
+        arm_2.append(point(w, 0))
 
         # Fibre position
         fiber = point(0.0, -57.0)
@@ -257,6 +292,76 @@ class positioner(object):
                       markersize=4.0))
 
 
+    def directions(self,t_end):
+        t1_0 = self.theta_1
+        t1_1 = t_end[0]
+        # Assume all angles in the range -pi < t < pi
+        dt1 = t1_1 - t1_0
+        t2_0 = self.theta_2+dt1
+        t2_1 = t_end[1]
+        dt2 = t2_1 - t2_0
+        print (dt1,dt2)
+        return dt1,dt2
+
+    def pose_to_arm_angles(self,theta):
+        # need to wrap angles here
+        arm_angles=theta.copy()
+        arm_angles[1] = theta[1]-theta[0]
+        return arm_angles
+
+    def arm_angles_to_pose(self,theta):
+        # need to wrap angles here
+        pose = theta.copy()
+        pose[1] = theta[1]+theta[0]
+        return pose
+
+    def wrap_angle_pmpi(self,theta):
+        # wrap an angle into -pi < theta < pi
+        return np.arctan2(np.sin(theta),np.cos(theta))
+
+    def wrap_angle_ztpi(self,theta):
+        # wrap an angle into 0 < theta < 2*pi
+        angle = self.wrap_angle_pmpi(theta)
+        if (angle < 0):
+            angle = abs(angle) + 2*(np.pi-abs(angle))
+        return angle
+            
+
+    def trajectory_from_park_sequential(self,theta):
+        """
+        Move lower arm in 50 steps to destination, then move upper arm in 50 steps to destination
+        """
+    
+        _t1end = theta[0]
+        _t2end = theta[1]
+        _t1start = self.theta_1
+        _t2start = self.theta_2
+        d1,d2 = self.directions(theta)
+        dir1=True
+        dir2=True
+        if (d1 > pi or d1 < -pi):
+            dir1=False
+        if (d2 > pi or d2 < -pi):
+            dir2=False
+        self.poses = []
+        for i in range(0,51):
+            if dir1:
+                dt1 = (_t1end-_t1start)*i/50
+            else:
+                dt1 = (_t1end+pi-_t1start)*i/50
+            self.poses.append([_t1start+dt1,_t2start+dt1+dt2])
+        for i in range(0,51):
+            if dir2:
+                dt2 = (_t2end-(_t2start+dt1))*i/50
+            else:
+                dt2 = (_t2end+pi-(_t2start+dt1))*i/50
+            self.poses.append([_t1end,(_t2start+dt1)+dt2])
+        return
+
+    def set_next_pose(self,i):
+        self.pose(self.poses[i])
+        return
+    
     def pose(self, theta):
         """
         Set the axis positions

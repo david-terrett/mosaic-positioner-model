@@ -68,6 +68,7 @@ class focal_plane(object):
         self.figure = None
         self.axes = None
         self._target_markers = []
+        self.live_view = False
 
 
     def add_targets(self, targets):
@@ -257,10 +258,11 @@ class focal_plane(object):
             writer.writerow({'X': t.position.x(), 'Y': t.position.y()})
 
 
-    def simple_allocator(self):
+    def simple_allocator(self,live_view=False):
         """
         Simple target to positioner assignment algorithm
         """
+        self.live_view = live_view
         self.clear_target_assignments()
 
         # sort the list of positioners so that we allocate the ones
@@ -288,6 +290,8 @@ class focal_plane(object):
             if alloc == self.allocated:
                 break
             alloc = self.allocated
+        # Turn off live view at the end anyway, to keep everything tidy 
+        self.live_view = False
 
 
     def swapper(self):
@@ -336,10 +340,29 @@ class focal_plane(object):
                 pos.pose([current_theta_1, current_theta_2])
                 return False
         self.allocated += 1
+        if (self.live_view):
+            # set up the move sequence
+            _tdest = [pos.theta_1,pos.theta_2]
+            pos.pose([current_theta_1,current_theta_2])
+            pos.trajectory_from_park(_tdest)
+            xmin = pos._axis_1_base.x()-120
+            xmax = pos._axis_1_base.x()+120
+            ymin = pos._axis_1_base.y()-120
+            ymax = pos._axis_1_base.y()+120
         if self.figure:
-            pos.plot(self.axes)
-            plt.draw()
-            plt.pause(0.001)
+            if self.live_view:
+                self.figure.gca().axis([xmin,xmax,ymin,ymax])
+                plt.draw()
+                plt.pause(0.02)
+                for next_pose in pos.poses:
+                    pos.pose(next_pose)
+                    pos.plot(self.axes)
+                    plt.draw()
+                    plt.pause(0.02)
+            else:
+                pos.plot(self.axes)
+                plt.draw()
+                plt.pause(0.001)
         return True
 
 
