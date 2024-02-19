@@ -1,5 +1,5 @@
 # -*- coding utf-8 -*-
-
+import numpy as np
 from math import acos
 from math import atan2
 from math import cos
@@ -306,13 +306,13 @@ class positioner(object):
     def pose_to_arm_angles(self,theta):
         # need to wrap angles here
         arm_angles=theta.copy()
-        arm_angles[1] = theta[1]-theta[0]
+        arm_angles[1] = self.wrap_angle_pmpi(theta[1]-theta[0]-pi)
         return arm_angles
 
     def arm_angles_to_pose(self,theta):
         # need to wrap angles here
         pose = theta.copy()
-        pose[1] = theta[1]+theta[0]
+        pose[1] = self.wrap_angle_pmpi(theta[1]+theta[0]+pi)
         return pose
 
     def wrap_angle_pmpi(self,theta):
@@ -325,7 +325,32 @@ class positioner(object):
         if (angle < 0):
             angle = abs(angle) + 2*(np.pi-abs(angle))
         return angle
-            
+
+    def trajectory_from_park_simultaneous(self,theta):
+        """
+        Move both arms in 50 steps together
+        """
+        abend = self.pose_to_arm_angles(theta) # final alpha beta in -pi < angle < pi
+        pstart = abend.copy()
+        pstart[0] = self.theta_1
+        pstart[1] = self.theta_2
+        abstart = self.pose_to_arm_angles(pstart) # initial alpha beta in -pi < angle < pi
+        dir0 = 1
+        dir1 = 1
+        if (abend[0] < abstart[0]): # assume robots can ONLY move from -pi to pi, not continuous (TBC)
+            dir0 = -1
+        if (abend[1] < abstart[1]):
+            dir1 = -1
+        self.poses=[]
+        d0 = dir0*(abend[0]-abstart[0])
+        d1 = dir0*(abend[1]-abstart[1])
+        abnew=abstart.copy()
+        for i in range(0,51):
+            abnew[0] = abstart[0]+d0*i/50
+            abnew[1] = abstart[1]+d1*i/50
+            pnew = self.arm_angles_to_pose(abnew)
+            self.poses.append(pnew)
+        return
 
     def trajectory_from_park_sequential(self,theta):
         """
