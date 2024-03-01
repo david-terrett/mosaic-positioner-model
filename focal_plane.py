@@ -115,6 +115,8 @@ class focal_plane(object):
         """
         for pos in self.positioners:
             pos.clear_targets()
+            if self.figure:
+                pos.plot(self.axes)
         for p in self._target_markers:
             p[0].remove()
         self._target_markers = []
@@ -128,6 +130,8 @@ class focal_plane(object):
         """
         for pos in self.positioners:
             pos.assign_target(None)
+            if self.figure:
+                pos.plot(self.axes)
         self.allocated = 0
 
 
