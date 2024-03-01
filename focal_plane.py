@@ -290,7 +290,7 @@ class focal_plane(object):
             if alloc == self.allocated:
                 break
             alloc = self.allocated
-        # Turn off live view at the end anyway, to keep everything tidy 
+        # Turn off live view at the end anyway, to keep everything tidy
         self.live_view = False
 
 
@@ -375,7 +375,7 @@ class focal_plane(object):
 
     def _plot_targets(self):
         for m in self._target_markers:
-            m.remove()
+            m[0].remove()
         self._target_markers = []
         for t in self.targets:
             self._target_markers.append(self.axes.plot(t.position.x(),
