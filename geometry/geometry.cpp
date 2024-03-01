@@ -251,14 +251,32 @@ extern "C" {
 
     // distance function
     PyObject* distance(PyObject*, PyObject* args) {
-        PointObject *p1, *p2;
-        if (!PyArg_ParseTuple(args, "OO", &p1, &p2)) return nullptr;
+        PyObject *obj1, *obj2;
+        if (!PyArg_ParseTuple(args, "OO", &obj1, &obj2)) return nullptr;
         double result(0.0);
-        if (PyObject_TypeCheck(p1, &PointType) &&
-                PyObject_TypeCheck(p2, &PointType)) {
+        if (PyObject_TypeCheck(obj1, &PointType) &&
+                PyObject_TypeCheck(obj2, &PointType)) {
+            PointObject* p1 = (PointObject*)(obj1);
+            PointObject* p2 = (PointObject*)(obj2);
             result = boost::geometry::distance(*p1->point, *p2->point);
+        } else if (PyObject_TypeCheck(obj1, &PointType) &&
+                PyObject_TypeCheck(obj2, &PolygonType)) {
+            PointObject* p1 = (PointObject*)(obj1);
+            PolygonObject* p2 = (PolygonObject*)(obj2);
+            result = boost::geometry::distance(*p1->point, *p2->polygon);
+        } else if (PyObject_TypeCheck(obj1, &PolygonType) &&
+                PyObject_TypeCheck(obj2, &PointType)) {
+            PolygonObject* p1 = (PolygonObject*)(obj1);
+            PointObject* p2 = (PointObject*)(obj2);
+            result = boost::geometry::distance(*p1->polygon, *p2->point);
+        } else if (PyObject_TypeCheck(obj1, &PolygonType) &&
+                PyObject_TypeCheck(obj2, &PolygonType)) {
+            PolygonObject* p1 = (PolygonObject*)(obj1);
+            PolygonObject* p2 = (PolygonObject*)(obj2);
+            result = boost::geometry::distance(*p1->polygon, *p2->polygon);
         } else {
-            PyErr_SetString(PyExc_TypeError, "distance only supports points");
+            PyErr_SetString(PyExc_TypeError,
+                    "distance only supports points and polygons");
             return nullptr;
         }
         return PyFloat_FromDouble(result);
