@@ -3,6 +3,7 @@
 import csv
 from math import floor
 from math import inf
+from math import pi
 from random import random
 import matplotlib.pyplot as plt
 
@@ -27,6 +28,7 @@ class focal_plane(object):
     def __init__(self):
         self._dx = 95.0
         self._dy = 82.3
+        self._max_sep2 = self._dx*self._dx*4
         self._x_max = 13.0 * self._dx
         self._x_min = -self._x_max
         self._y_max = 12.0 * self._dy
@@ -58,8 +60,23 @@ class focal_plane(object):
         self._add_column(11, 8)
         self._add_column(-11, 8)
 
+    # Build list of neightbours for each positioner
+        for p in self.positioners:
+            xp=p.position.x()
+            yp=p.position.y()
+            p.neighbours = []
+            for q in self.positioners:
+                if not (p == q):
+                    dx= xp-q.position.x()
+                    dy= yp-q.position.y()
+                    sep2 = dx*dx+dy*dy
+                    if (sep2 <= self._max_sep2):
+                        p.neighbours.append(q)
+                    
+
     # No targets allocated
         self.allocated = 0
+        self.positioned = 0
 
     # empty list of targets
         self.targets = []
@@ -115,13 +132,12 @@ class focal_plane(object):
         """
         for pos in self.positioners:
             pos.clear_targets()
-            if self.figure:
-                pos.plot(self.axes)
         for p in self._target_markers:
             p[0].remove()
         self._target_markers = []
         self.targets = []
         self.allocated = 0
+        self.positioned = 0
 
 
     def clear_target_assignments(self):
@@ -130,9 +146,8 @@ class focal_plane(object):
         """
         for pos in self.positioners:
             pos.assign_target(None)
-            if self.figure:
-                pos.plot(self.axes)
         self.allocated = 0
+        self.positioned = 0
 
 
     def create_random_targets(self, density):
@@ -187,8 +202,8 @@ class focal_plane(object):
         if not self.figure:
             self.figure = plt.figure()
             self.axes = self.figure.subplots()
-            self.figure.gca().set_aspect('equal')
-            self.figure.gca().axis([-1300.0, 1300.0, -1000.0, 1000.0])
+        self.figure.gca().set_aspect('equal')
+        self.figure.gca().axis([-1300.0, 1300.0, -1000.0, 1000.0])
         for p in self.positioners:
             p.plot(self.axes)
 
@@ -244,6 +259,7 @@ class focal_plane(object):
         else:
             print("all positioners can reach at least one target")
         print(f"and {one_target} can reach only one target")
+        print(f"{self.positioned} positioners can be moved to their target positions without collisions")
 
 
     def save_targets(self, csvfile):
@@ -260,6 +276,35 @@ class focal_plane(object):
         writer.writeheader()
         for t in self.targets:
             writer.writerow({'X': t.position.x(), 'Y': t.position.y()})
+
+
+    def _add_column(self, x, n):
+        if n % 2:
+            self._add_positioner(x, 0)
+            for y in range(1, floor(n/2.0) + 1):
+                self._add_positioner(x, y)
+                self._add_positioner(x, -y)
+        else:
+            for y in range(0, floor(n/2.0)):
+                self._add_positioner(x, y + 0.5)
+                self._add_positioner(x, -y - 0.5)
+
+
+    def _add_positioner(self, i, j):
+        self.positioners.append(positioner(point(i * self._dx, j * self._dy),
+                                           len(self.positioners)))
+
+
+    def swapper(self):
+        """
+        Look for targets for free positioners by looking for reachable targets
+        that are allocated to another positioner and seeing if that positioner
+        can be allocated a different target
+        """
+        for pos in self.positioners:
+            if not pos.target:
+                if not self._try_swap(pos, False):
+                    self._try_swap(pos, True)
 
 
     def simple_allocator(self,live_view=False):
@@ -298,35 +343,6 @@ class focal_plane(object):
         self.live_view = False
 
 
-    def swapper(self):
-        """
-        Look for targets for free positioners by looking for reachable targets
-        that are allocated to another positioner and seeing if that positioner
-        can be allocated a different target
-        """
-        for pos in self.positioners:
-            if not pos.target:
-                if not self._try_swap(pos, False):
-                    self._try_swap(pos, True)
-
-
-    def _add_column(self, x, n):
-        if n % 2:
-            self._add_positioner(x, 0)
-            for y in range(1, floor(n/2.0) + 1):
-                self._add_positioner(x, y)
-                self._add_positioner(x, -y)
-        else:
-            for y in range(0, floor(n/2.0)):
-                self._add_positioner(x, y + 0.5)
-                self._add_positioner(x, -y - 0.5)
-
-
-    def _add_positioner(self, i, j):
-        self.positioners.append(positioner(point(i * self._dx, j * self._dy),
-                                           len(self.positioners)))
-
-
     def _assign_target_to_positioner(self, pos, t):
         """
         Try assigning a target to positioner. If we can't find a target that
@@ -344,42 +360,167 @@ class focal_plane(object):
                 pos.pose([current_theta_1, current_theta_2])
                 return False
         self.allocated += 1
-        if (self.live_view):
+        pos.in_position = False # Assigned a target, but haven't got there yet
+        if (True): # (self.live_view):
             # set up the move sequence
             _tdest = [pos.theta_1,pos.theta_2]
-            pos.pose([current_theta_1,current_theta_2])
-            pos.trajectory_from_park_simultaneous(_tdest)
-            xmin = pos._axis_1_base.x()-120
-            xmax = pos._axis_1_base.x()+120
-            ymin = pos._axis_1_base.y()-120
-            ymax = pos._axis_1_base.y()+120
-        if self.figure:
-            if self.live_view:
-                self.figure.gca().axis([xmin,xmax,ymin,ymax])
-                plt.draw()
-                plt.pause(0.02)
+            _tpos = pos.fiber
+            pos.pose([current_theta_1,current_theta_2]) # set it back to park for a second
+            pos.trajectory_from_here_simultaneous(_tdest) # calculate the movement
+            pos.pose(_tdest) # set it in position so we can continue the allocations
+        return True
+
+    def _park_all(self):
+        for p in self.positioners:
+            p.park()
+            p.in_position = False
+        return
+
+    def _move_to_position(self,pos):
+        if (pos.in_position):
+            return True
+        current_theta_1 = pos.theta_1
+        current_theta_2 = pos.theta_2
+        if (self.figure and pos.target):
+            self._zoom_to(pos)
+            _safe = True
+            once = True
+            while (once):
+                once=False
                 for next_pose in pos.poses:
+                    if _safe:
+                        pos.pose(next_pose)
+                        if self._has_collision(pos):  # Did we hit anything along the way
+                            _safe = False
+                            pos.pose([current_theta_1,current_theta_2])
+                        pos.plot(self.axes)
+                        plt.draw()
+                        plt.pause(0.02)
+                print ('End of first loop... Safe = ',_safe)
+                if (_safe):
+                    print (pos.id,' Moved to final position ')
+                    pos.in_position = True
+                else:
+                    block = pos.collision_list[0]
+                    print (pos.id," Collided with something along the way... deferring until next pass", block.id)
+                    if (not block.target):
+                        print (block.id,' Has no target... trying to move 90 degrees')
+                        if self._move_to_pose(block,[pi/2,3*pi/2]):
+                            print('moved ',block.id)
+                    else:
+                        if (block.in_position):
+                            print (block.id,' Has a target, but is already in position... trying to park')
+                            if self._reverse_last_move(block):
+                                print ('Parked ',block.id, block.in_position)
+                                block.in_position = False
+                                print ('Parked ',block.id, block.in_position)
+                        else:
+                            print (block.id, ' has not yet been moved... trying to deploy')
+                            if self._move_to_position(block):
+                                print ('Sucessfully deployed ',block.id,block.in_position)
+                                block.in_position = True
+                                print ('Sucessfully deployed ',block.id,block.in_position)
+                                
+                            
+                    plt.pause(0.5)
+                print (pos.in_position)
+        else:
+            pos.plot(self.axes)
+            plt.draw()
+            plt.pause(0.001)
+        return pos.in_position
+    
+
+    def _move_to_pose(self,pos,pose=[0.,pi]):
+        """
+        Try to move this positioner to a specified new pose
+        leave it back one step if we hit anything
+        """
+        current_theta_1 = pos.theta_1
+        current_theta_2 = pos.theta_2
+        current_target_path = pos.poses.copy()
+        _safe = True
+        if self.figure:
+            pos.trajectory_from_here_simultaneous(pose)  # calculate a new set of poses to get to the new destination
+            for next_pose in pos.poses:
+                if (_safe):
                     pos.pose(next_pose)
+                    if self._has_collision(pos):  # Did we hit anything along the way
+                        _safe = False
+                        pos.pose([current_theta_1,current_theta_2])
                     pos.plot(self.axes)
                     plt.draw()
                     plt.pause(0.02)
+            if (_safe):
+                    pos.trajectory_from_here_simultaneous(current_target_path[-1]) # New path from here to final desitination
             else:
-                pos.plot(self.axes)
-                plt.draw()
-                plt.pause(0.001)
-        return True
+                pos.in_position = False
+                block = pos.collision_list[0]
+                print (pos.id," Collided with something along the way... deferring until next pass", block.id)
+            plt.pause(0.5)
+        else:
+            pos.plot(self.axes)
+            plt.draw()
+            plt.pause(0.001)
+        return _safe
+    
 
+    def _reverse_last_move(self,pos):
+        """
+        Try to reverse the moves for this positoiner (n.b. this may not be to park)
+        """
+        current_theta_1 = pos.theta_1
+        current_theta_2 = pos.theta_2
+        _safe = True
+        if self.figure:
+            for i in range (0,len(pos.poses)):
+                if (_safe):
+                    pos.pose(pos.poses[-(i+1)])
+                    if self._has_collision(pos):
+                        _safe = False
+                        pos.pose([current_theta_1,current_theta_2])
+                    pos.plot(self.axes)
+                    plt.draw()
+                    plt.pause(0.02)
+            if (_safe):
+                pos.in_position = False 
+            else:
+                print (pos.id,"Collided with something try to return to start position",pos.collision_list[0].id)
+            plt.pause(0.5)
+        else:
+            pos.plot(self.axes)
+            plt.draw()
+            plt.pause(0.001)
+        return _safe
+
+
+    def _zoom_to(self,pos):
+        xmin = pos._axis_1_base.x()-120
+        xmax = pos._axis_1_base.x()+120
+        ymin = pos._axis_1_base.y()-120
+        ymax = pos._axis_1_base.y()+120
+        if (self.figure):
+            self.figure.gca().axis([xmin,xmax,ymin,ymax])
+            plt.draw()
+            plt.pause(0.002)
+        return
+            
 
     def _has_collision(self, pos):
-        for p in self.positioners:
+        pos.collision_list = []
+        for p in pos.neighbours:
             if p.collides_with(pos):
+                pos.collision_list.append(p)
                 return True
         return False
 
-
+    
     def _plot_targets(self):
         for m in self._target_markers:
-            m[0].remove()
+            try:
+                m.remove()
+            except:
+                next
         self._target_markers = []
         for t in self.targets:
             self._target_markers.append(self.axes.plot(t.position.x(),

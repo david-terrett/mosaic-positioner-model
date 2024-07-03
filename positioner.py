@@ -6,6 +6,7 @@ from math import cos
 from math import fabs
 from math import pi
 from math import sin
+from matplotlib import pyplot as plt
 
 from geometry import distance
 from geometry import intersects
@@ -56,6 +57,7 @@ class positioner(object):
         self.id = id
         self.targets = {}
         self.target = None
+        self.neighbours = []
         self.d = []
 
         # Define the rotation axis of arm 1 for a positioner at placed at 0,0
@@ -64,7 +66,7 @@ class positioner(object):
         # Construct outline of lower positioner arm in the initial position
         # (angle 90, so parallel to the Y axis)
         arm_1 = polygon()
-
+        
         #        w = 24.7 / 2.0
         #        l1 = 39.8
         #        l2 = w/2.0
@@ -87,12 +89,13 @@ class positioner(object):
             arm_1.append(point(xx,yy))
         arm_1.append(point(-w, l1))
         arm_1.append(point(-w, 0))
-        for i in range(0,semicirc_points+1):
+        for i in range(1,semicirc_points+1):
             t = pi*float(i)/semicirc_points
             xx = -l2*cos(t)
             yy = -l2*sin(t)
             arm_1.append(point(xx,yy))
-
+        arm_1.append(point(w,0))
+        
         # Position of arm2 rotation axis when arm 1 is parked
         axis_2 = point(0.0, 28.5)
 
@@ -116,7 +119,7 @@ class positioner(object):
             yy = l2*sin(t)
             arm_2.append(point(xx,yy))
         arm_2.append(point(-w, -l1))
-        for i in range(0,semicirc_points+1):
+        for i in range(1,semicirc_points+1):
             t = pi*float(i)/semicirc_points
             xx = -l2*cos(t)
             yy = -l1-l2*sin(t)
@@ -158,11 +161,10 @@ class positioner(object):
         self._arm_2_angle_offset = atan2(fiber.y() - axis_2.y(),
                                         fiber.x() - axis_2.x()) + pi/2.0
 
-        # Positioners that are more than this distance apart can't collide.
-        self.safe_separation = 150.0
-
         # Park the positioner
+        self.tpose=[0.,pi]
         self.park()
+        
 
 
     def add_target(self, t):
@@ -203,9 +205,10 @@ class positioner(object):
             self.target.positioner = None
         if t:
             if alt:
-                self.pose(self.targets[t][0])
+                self.tpose=self.targets[t][0]
             else:
-                self.pose(self.targets[t][1])
+                self.tpose=self.targets[t][1]
+            self.pose(self.tpose)
             t.positioner = self
         self.target = t
 
@@ -252,11 +255,6 @@ class positioner(object):
         """
         if other is self:
             return False
-        dx = self._axis_1_base.x() - other._axis_1_base.x()
-        dy = self._axis_1_base.y() - other._axis_1_base.y()
-        safe_sep = self.safe_separation + other.safe_separation
-        if ( dx * dx + dy * dy ) > safe_sep * safe_sep:
-            return False
         return (intersects(self.arm_1, other.arm_1) or
                 intersects(self.arm_2, other.arm_2))
 
@@ -264,7 +262,10 @@ class positioner(object):
         """
         Park the positioner
         """
-        self.pose([0.0, pi])
+        self.pose([0, pi])
+        self.poses=[[0,pi]]
+        self.pose_index=0
+        self.in_position=True
 
 
     def plot(self, ax):
@@ -291,7 +292,10 @@ class positioner(object):
         self.d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
                               color='black', markersize=4.0))
         if self.target:
-            c = 'blue'
+            if (self.in_position):
+                c = 'blue'
+            else:
+                c = 'green'
         else:
             c = 'red'
 
@@ -313,8 +317,9 @@ class positioner(object):
 
     def pose_to_arm_angles(self,theta):
         # need to wrap angles here
-        arm_angles=theta.copy()
-        arm_angles[1] = self.wrap_angle_pmpi(theta[1]-theta[0]-pi)
+        t=self.wrap_angle_pmpi(theta)
+        arm_angles=t.copy()
+        arm_angles[1] = self.wrap_angle_pmpi(self.wrap_angle_pmpi(t[1]-t[0])-pi)
         return arm_angles
 
     def arm_angles_to_pose(self,theta):
@@ -334,24 +339,176 @@ class positioner(object):
             angle = abs(angle) + 2*(np.pi-abs(angle))
         return angle
 
-    def trajectory_from_park_simultaneous(self,theta):
+    def zoom_to(self,figure,winsize=240):
+        xmin = self._axis_1_base.x()-winsize/2
+        xmax = self._axis_1_base.x()+winsize/2
+        ymin = self._axis_1_base.y()-winsize/2
+        ymax = self._axis_1_base.y()+winsize/2
+        if (figure):
+            figure.gca().axis([xmin,xmax,ymin,ymax])
+            plt.draw()
+            plt.pause(0.002)
+        return
+
+    def _has_collision(self):
+        self.collision_list=[]
+        for p in self.neighbours:
+            if self.collides_with(p):
+                self.collision_list.append(p)
+                return True
+        return False
+
+    def step_one_pose(self,figure,axes,forward=True):
+        '''
+        Probably need to return more than one flag here
+        '''
+        if not self.poses:
+            return True  # no moves defined, so we are 'in position'
+        if forward and self.in_position:
+            return True # nowhere to go
+        if (not forward and self.pos_index==0):
+            return True # nowhere to go
+        _spi = self.pose_index
+        if forward:
+            self.pose_index = self.pose_index + 1
+        else:
+            self.pose_index = self.pose_index - 1
+        _safe = True
+        self.pose(self.poses[self.pose_index])
+        _safe = not self._has_collision() # did we hit anything?
+        if figure:
+            self.zoom_to(figure)
+            self.plot(axes)
+            plt.draw()
+            plt.pause(0.001)
+        if not _safe:
+            print (self.id, ': Blocked by ',self.collision_list[0].id)
+            self.pose_index = _spi
+            
+        
+        
+
+    def move_to_position(self,figure,axes):
+        """
+        move through the calculated poses to get to destination, check for collisions at each step and report collisions
+        """
+        if (self.in_position):
+            return True
+        if not self.target:
+            return True
+        start_pose = [self.theta_1,self.theta_2]
+        if (figure):
+            self.zoom_to(figure)
+            _safe = True
+            for next_pose in self.poses:
+                if _safe:
+                    self.pose(next_pose)
+                    _safe = not self._has_collision() # did we hit anything?
+                    if (not _safe):
+                        self.pose(start_pose)
+                    self.plot(axes)
+                    plt.draw()
+                    plt.pause(0.02)
+            if (_safe):
+                print (self.id,': Moved to final position')
+                self.in_position = True
+            else:
+                print (self.id,': Blocked by ',self.collision_list[0].id)
+        else:
+            self.plot(axes)
+            plt.draw()
+            plt.pause(0.001)
+        return self.in_position
+
+    def move_to_pose(self,figure,axes,pose=[0.,pi]):
+        """
+        move the positioner to a newly specified pose, plotting and checking for collisions along the way
+        """
+        start_pose = [self.theta_1,self.theta_2]
+        current_target_path=self.poses.copy()
+        _old_in_position = self.in_position
+        _safe = True
+        self.trajectory_from_here_simultaneous(pose) # calculate a new set of poses to get to the new destination
+        if (figure):
+            self.zoom_to(figure)
+            for next_pose in self.poses:
+                if _safe:
+                    self.pose(next_pose)
+                    if self._has_collision():  # did we hit anything?
+                        _safe = False
+                        self.pose(start_pose)
+                    self.plot(axes)
+                    plt.draw()
+                    plt.pause(0.02)
+            if (_safe):
+                print (self.id,': Moved to requested position')
+                self.trajectory_from_here_simultaneous(self.tpose) # calculate new path from here to target pose.
+                if (self.in_position):
+                    self.in_position=False
+                if ((next_pose[0] == self.tpose[0]) and (next_pose[1] == self.tpose[1])):
+                    self.in_position=True
+            else:
+                self.in_position = _old_in_position
+                block = self.collision_list[0]
+                print (self.id,': Collided with ',block.id)
+            plt.pause(0.5)
+        else:
+            self.plot(axes)
+            plt.draw()
+            plt.pause(0.001)
+        return _safe
+
+    def reverse_last_move(self,figure,axes):
+        """
+        Try to reverse the last move we made, assuming the poses are unchanged. Check along the way.
+        """
+        start_pose = [self.theta_1,self.theta_2]
+        current_target_path=self.poses.copy()
+        _safe = True
+        if (figure):
+            for i in range (0,len(self.poses)):
+                if (_safe):
+                    self.pose(self.poses[-(i+1)])
+                    if self._has_collision(): # did we hit anything
+                        _safe = False
+                        self.pose(start_pose)
+                    self.plot(axes)
+                    plt.draw()
+                    plt.pause(0.02)
+            if _safe:
+                if (self.in_position):
+                    self.in_position = False
+                if ((self.poses[-(i+1)][0] == self.tpose[0]) and (self.poses[-(i+1)][1] == self.tpose[1])):
+                    self.in_position = True
+            else:
+                print (self.id,': Collided with something trying to return to last start position',self.collision_list[0].id)
+            plt.pause(0.5)
+        else:
+            self.plot(axes)
+            plt.draw()
+            plt.pause(0.001)
+        return _safe
+                            
+       
+
+    def trajectory_from_here_simultaneous(self,theta):
         """
         Move both arms in 50 steps together
         """
         abend = self.pose_to_arm_angles(theta) # final alpha beta in -pi < angle < pi
         pstart = abend.copy()
+        pend=theta
         pstart[0] = self.theta_1
         pstart[1] = self.theta_2
         abstart = self.pose_to_arm_angles(pstart) # initial alpha beta in -pi < angle < pi
-        dir0 = 1
-        dir1 = 1
-        if (abend[0] < abstart[0]): # assume robots can ONLY move from -pi to pi, not continuous (TBC)
-            dir0 = -1
-        if (abend[1] < abstart[1]):
-            dir1 = -1
         self.poses=[]
-        d0 = dir0*(abend[0]-abstart[0])
-        d1 = dir0*(abend[1]-abstart[1])
+        self.pos_index=0
+#        print ('Pose Start: ',np.asarray(pstart)*180/np.pi)
+#        print ('Pose End: ',np.asarray(pend)*180/np.pi)
+#        print ('AB Start: ',np.asarray(abstart)*180/np.pi)
+#        print ('AB End: ',np.asarray(abend)*180/np.pi)
+        d0 = abend[0]-abstart[0]
+        d1 = abend[1]-abstart[1]
         abnew=abstart.copy()
         for i in range(0,51):
             abnew[0] = abstart[0]+d0*i/50
@@ -360,42 +517,10 @@ class positioner(object):
             self.poses.append(pnew)
         return
 
-    def trajectory_from_park_sequential(self,theta):
-        """
-        Move lower arm in 50 steps to destination, then move upper arm in 50
-        steps to destination
-        """
-
-        _t1end = theta[0]
-        _t2end = theta[1]
-        _t1start = self.theta_1
-        _t2start = self.theta_2
-        d1,d2 = self.directions(theta)
-        dir1=True
-        dir2=True
-        if (d1 > pi or d1 < -pi):
-            dir1=False
-        if (d2 > pi or d2 < -pi):
-            dir2=False
-        self.poses = []
-        for i in range(0,51):
-            if dir1:
-                dt1 = (_t1end-_t1start)*i/50
-            else:
-                dt1 = (_t1end+pi-_t1start)*i/50
-            self.poses.append([_t1start+dt1,_t2start+dt1+dt2])
-        for i in range(0,51):
-            if dir2:
-                dt2 = (_t2end-(_t2start+dt1))*i/50
-            else:
-                dt2 = (_t2end+pi-(_t2start+dt1))*i/50
-            self.poses.append([_t1end,(_t2start+dt1)+dt2])
-        return
-
     def set_next_pose(self,i):
         self.pose(self.poses[i])
         return
-
+    
     def pose(self, theta):
         """
         Set the axis positions
