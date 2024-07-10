@@ -60,28 +60,27 @@ class focal_plane(object):
         self._add_column(11, 8)
         self._add_column(-11, 8)
 
-    # Build list of neightbours for each positioner
+        # Build list of neighbours for each positioner
         for p in self.positioners:
             xp=p.position.x()
             yp=p.position.y()
             p.neighbours = []
             for q in self.positioners:
-                if not (p == q):
+                if not p == q:
                     dx= xp-q.position.x()
                     dy= yp-q.position.y()
                     sep2 = dx*dx+dy*dy
-                    if (sep2 <= self._max_sep2):
+                    if sep2 <= self._max_sep2:
                         p.neighbours.append(q)
-                    
 
-    # No targets allocated
+        # No targets allocated
         self.allocated = 0
         self.positioned = 0
 
-    # empty list of targets
+        # empty list of targets
         self.targets = []
 
-    # No plot yet
+        # No plot yet
         self.figure = None
         self.axes = None
         self._target_markers = []
@@ -307,7 +306,7 @@ class focal_plane(object):
                     self._try_swap(pos, True)
 
 
-    def simple_allocator(self,live_view=False):
+    def simple_allocator(self, live_view=False):
         """
         Simple target to positioner assignment algorithm
         """
@@ -339,6 +338,7 @@ class focal_plane(object):
             if alloc == self.allocated:
                 break
             alloc = self.allocated
+
         # Turn off live view at the end anyway, to keep everything tidy
         self.live_view = False
 
@@ -361,7 +361,7 @@ class focal_plane(object):
                 return False
         self.allocated += 1
         pos.in_position = False # Assigned a target, but haven't got there yet
-        if (True): # (self.live_view):
+        if True: # (self.live_view):
             # set up the move sequence
             _tdest = [pos.theta_1,pos.theta_2]
             _tpos = pos.fiber
@@ -376,16 +376,16 @@ class focal_plane(object):
             p.in_position = False
         return
 
-    def _move_to_position(self,pos):
-        if (pos.in_position):
+    def _move_to_position(self, pos):
+        if pos.in_position:
             return True
         current_theta_1 = pos.theta_1
         current_theta_2 = pos.theta_2
-        if (self.figure and pos.target):
+        if self.figure and pos.target:
             self._zoom_to(pos)
             _safe = True
             once = True
-            while (once):
+            while once:
                 once=False
                 for next_pose in pos.poses:
                     if _safe:
@@ -396,54 +396,58 @@ class focal_plane(object):
                         pos.plot(self.axes)
                         plt.draw()
                         plt.pause(0.02)
-                print ('End of first loop... Safe = ',_safe)
-                if (_safe):
+                print('End of first loop... Safe = ',_safe)
+                if _safe:
                     print (pos.id,' Moved to final position ')
                     pos.in_position = True
                 else:
                     block = pos.collision_list[0]
-                    print (pos.id," Collided with something along the way... deferring until next pass", block.id)
-                    if (not block.target):
-                        print (block.id,' Has no target... trying to move 90 degrees')
+                    print(pos.id," Collided with something along the way... deferring until next pass", block.id)
+                    if not block.target:
+                        print(block.id,' Has no target... trying to move 90 degrees')
                         if self._move_to_pose(block,[pi/2,3*pi/2]):
                             print('moved ',block.id)
                     else:
-                        if (block.in_position):
-                            print (block.id,' Has a target, but is already in position... trying to park')
+                        if block.in_position:
+                            print(block.id,' Has a target, but is already in position... trying to park')
                             if self._reverse_last_move(block):
-                                print ('Parked ',block.id, block.in_position)
+                                print('Parked ',block.id, block.in_position)
                                 block.in_position = False
-                                print ('Parked ',block.id, block.in_position)
+                                print('Parked ',block.id, block.in_position)
                         else:
-                            print (block.id, ' has not yet been moved... trying to deploy')
+                            print(block.id, ' has not yet been moved... trying to deploy')
                             if self._move_to_position(block):
-                                print ('Sucessfully deployed ',block.id,block.in_position)
+                                print ('Successfully deployed ',block.id,block.in_position)
                                 block.in_position = True
-                                print ('Sucessfully deployed ',block.id,block.in_position)
-                                
-                            
+                                print ('Successfully deployed ',block.id,block.in_position)
+
+
                     plt.pause(0.5)
-                print (pos.in_position)
+                print(pos.in_position)
         else:
             pos.plot(self.axes)
             plt.draw()
             plt.pause(0.001)
         return pos.in_position
-    
 
-    def _move_to_pose(self,pos,pose=[0.,pi]):
+
+    def _move_to_pose(self, pos, pose=None):
         """
         Try to move this positioner to a specified new pose
         leave it back one step if we hit anything
         """
+        if pose is None:
+            pose = [0.0, pi]
         current_theta_1 = pos.theta_1
         current_theta_2 = pos.theta_2
         current_target_path = pos.poses.copy()
         _safe = True
         if self.figure:
-            pos.trajectory_from_here_simultaneous(pose)  # calculate a new set of poses to get to the new destination
+
+            # calculate a new set of poses to get to the new destination
+            pos.trajectory_from_here_simultaneous(pose)
             for next_pose in pos.poses:
-                if (_safe):
+                if _safe:
                     pos.pose(next_pose)
                     if self._has_collision(pos):  # Did we hit anything along the way
                         _safe = False
@@ -451,30 +455,34 @@ class focal_plane(object):
                     pos.plot(self.axes)
                     plt.draw()
                     plt.pause(0.02)
-            if (_safe):
-                    pos.trajectory_from_here_simultaneous(current_target_path[-1]) # New path from here to final desitination
+            if _safe:
+
+                # New path from here to final destination
+                pos.trajectory_from_here_simultaneous(current_target_path[-1])
             else:
                 pos.in_position = False
                 block = pos.collision_list[0]
-                print (pos.id," Collided with something along the way... deferring until next pass", block.id)
+                print (pos.id,
+                       " Collided with something along the way... deferring until next pass",
+                       block.id)
             plt.pause(0.5)
         else:
             pos.plot(self.axes)
             plt.draw()
             plt.pause(0.001)
         return _safe
-    
 
-    def _reverse_last_move(self,pos):
+
+    def _reverse_last_move(self, pos):
         """
-        Try to reverse the moves for this positoiner (n.b. this may not be to park)
+        Try to reverse the moves for this positioner (n.b. this may not be to park)
         """
         current_theta_1 = pos.theta_1
         current_theta_2 = pos.theta_2
         _safe = True
         if self.figure:
             for i in range (0,len(pos.poses)):
-                if (_safe):
+                if _safe:
                     pos.pose(pos.poses[-(i+1)])
                     if self._has_collision(pos):
                         _safe = False
@@ -482,8 +490,8 @@ class focal_plane(object):
                     pos.plot(self.axes)
                     plt.draw()
                     plt.pause(0.02)
-            if (_safe):
-                pos.in_position = False 
+            if _safe:
+                pos.in_position = False
             else:
                 print (pos.id,"Collided with something try to return to start position",pos.collision_list[0].id)
             plt.pause(0.5)
@@ -499,12 +507,12 @@ class focal_plane(object):
         xmax = pos._axis_1_base.x()+120
         ymin = pos._axis_1_base.y()-120
         ymax = pos._axis_1_base.y()+120
-        if (self.figure):
+        if self.figure:
             self.figure.gca().axis([xmin,xmax,ymin,ymax])
             plt.draw()
             plt.pause(0.002)
         return
-            
+
 
     def _has_collision(self, pos):
         pos.collision_list = []
@@ -514,13 +522,13 @@ class focal_plane(object):
                 return True
         return False
 
-    
+
     def _plot_targets(self):
         for m in self._target_markers:
             try:
-                m.remove()
-            except:
-                next
+                self._target_markers.remove(m)
+            except ValueError:
+                pass
         self._target_markers = []
         for t in self.targets:
             self._target_markers.append(self.axes.plot(t.position.x(),

@@ -295,7 +295,8 @@ extern "C" {
             PyErr_SetString(PyExc_TypeError, "only polygons can intersect");
             return nullptr;
         }
-        return PyBool_FromLong((long)result);
+        if (result) Py_RETURN_TRUE;
+        Py_RETURN_FALSE;
     };
 
     // geometry module functions

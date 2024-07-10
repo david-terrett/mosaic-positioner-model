@@ -7,6 +7,11 @@ but boost geometry is an include file only library so all that is required
 is that the boost include files are installed; there is no need to build the
 boost binary libraries.
 
+# Dependencies
+
+- boost geometry
+- matplotlib
+
 # Unpacking
 
 If you received the software as a git bundle (positioner_model.bundle) you
