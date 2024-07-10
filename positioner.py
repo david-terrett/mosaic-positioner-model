@@ -44,7 +44,7 @@ class positioner(object):
     """
 
 
-    def __init__(self, position, ident):
+    def __init__(self, position, ident, type):
         """
         Create positioner
 
@@ -59,6 +59,11 @@ class positioner(object):
         self.target = None
         self.neighbours = []
         self.d = []
+
+        # type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS, 5: NIR+VIS-HR, 8: Camera (i.e. a bit mask)
+        self.colours={0:'w',1:'r',2:'b',3:'m',5:'g',8:'c'}
+        self.type = type
+
 
         # Define the rotation axis of arm 1 for a positioner at placed at 0,0
         axis_1 = point(0.0, 0.0)
@@ -284,7 +289,7 @@ class positioner(object):
 
         # Draw the arms
         self.d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
-        self.d.append(ax.plot(self.arm_2.x(), self.arm_2.y(), color='black'))
+        self.d.append(ax.plot(self.arm_2.x(), self.arm_2.y(), color=self.colours[self.type]))
 
         # Draw the axes
         self.d.append(ax.plot(self._axis_1_base.x(), self._axis_1_base.y(),
@@ -300,7 +305,7 @@ class positioner(object):
             c = 'red'
 
         # Draw the fiber
-        self.d.append(ax.plot(self.fiber.x(), self.fiber.y(), 'o', color=c,
+        self.d.append(ax.plot(self.fiber.x(), self.fiber.y(), 'o', color='red',
                       markersize=4.0))
 
 
@@ -463,7 +468,7 @@ class positioner(object):
             plt.pause(0.001)
         return _safe
 
-    def reverse_last_move(self, figure,axes):
+    def reverse_last_move(self, figure, axes):
         """
         Try to reverse the last move we made, assuming the poses are
         unchanged. Check along the way.

@@ -33,35 +33,57 @@ class focal_plane(object):
         self._x_min = -self._x_max
         self._y_max = 12.0 * self._dy
         self._y_min = -self._y_max
-
+        self._types = [3,5,2,3,5,2,3,1,0,1,2,5,3,2,5,3,2,1,1,   
+                       2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
+                       2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
+                       3,5,2,3,5,2,3,1,2,1,2,5,3,2,5,3,2,1,1,
+                       3,5,2,3,5,2,3,1,2,1,2,5,3,2,5,3,2,1,1,
+                       2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
+                       2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
+                       3,5,2,3,5,2,3,1,0,2,5,3,2,5,3,2,1,
+                       3,5,2,3,5,2,3,1,0,2,5,3,2,5,3,2,1,
+                       2,3,5,2,3,5,8,1,5,3,2,5,3,2,5,1,
+                       2,3,5,2,3,5,0,1,5,3,2,5,3,0,5,1,
+                       3,5,2,3,0,0,0,0,0,2,5,3,8,0,0,0,8,
+                       3,5,2,3,1,0,0,0,8,2,5,3,0,0,0,0,8,
+                       2,3,5,8,5,3,2,0,
+                       2,3,5,8,5,3,2,8,
+                       3,5,2,1,2,5,1,
+                       3,5,2,1,2,5,1,
+                       2,3,5,5,3,0,
+                       2,3,1,1,3,2,
+                       1,1,0,1,0,1,1,
+                       1,1,0,1,0,1,1]
+                       
+                       
+                       
     # Build the list of positioners
         self.positioners = []
-        self._add_column(0, 21)
-        self._add_column(1, 20)
-        self._add_column(-1, 20)
-        self._add_column(2, 21)
-        self._add_column(-2, 21)
-        self._add_column(3, 20)
-        self._add_column(-3, 20)
-        self._add_column(4, 19)
-        self._add_column(-4, 19)
-        self._add_column(5, 8)
-        self._add_column(-5, 8)
-        self._add_column(6, 7)
-        self._add_column(-6, 7)
-        self._add_column(7, 6)
-        self._add_column(-7, 6)
+        self._add_column(0, 19)
+        self._add_column(1, 18)
+        self._add_column(-1, 18)
+        self._add_column(2, 19)
+        self._add_column(-2, 19)
+        self._add_column(3, 18)
+        self._add_column(-3, 18)
+        self._add_column(4, 17)
+        self._add_column(-4, 17)
+        self._add_column(5, 16)
+        self._add_column(-5, 16)
+        self._add_column(6, 17)
+        self._add_column(-6, 17)
+        self._add_column(7, 8)
+        self._add_column(-7, 8)
         self._add_column(8, 7)
         self._add_column(-8, 7)
-        self._add_column(9, 8)
-        self._add_column(-9, 8)
-        self._add_column(10, 9)
-        self._add_column(-10, 9)
-        self._add_column(11, 8)
-        self._add_column(-11, 8)
+        self._add_column(9, 6)
+        self._add_column(-9, 6)
+        self._add_column(10, 7)
+        self._add_column(-10, 7)
 
         # Build list of neighbours for each positioner
         for p in self.positioners:
+            p.type = self._types[p.id]
             xp=p.position.x()
             yp=p.position.y()
             p.neighbours = []
@@ -279,19 +301,21 @@ class focal_plane(object):
 
     def _add_column(self, x, n):
         if n % 2:
-            self._add_positioner(x, 0)
+            self._add_positioner(x, 0, 1)
             for y in range(1, floor(n/2.0) + 1):
-                self._add_positioner(x, y)
-                self._add_positioner(x, -y)
+                self._add_positioner(x, y, 1)
+            for y in range(1, floor(n/2.0) + 1):
+                self._add_positioner(x, -y, 2)
         else:
             for y in range(0, floor(n/2.0)):
-                self._add_positioner(x, y + 0.5)
-                self._add_positioner(x, -y - 0.5)
+                self._add_positioner(x, y + 0.5, 3)
+            for y in range(0, floor(n/2.0)):
+                self._add_positioner(x, -y - 0.5, 5)
 
 
-    def _add_positioner(self, i, j):
+    def _add_positioner(self, i, j, t):
         self.positioners.append(positioner(point(i * self._dx, j * self._dy),
-                                           len(self.positioners)))
+                                           len(self.positioners), t))
 
 
     def swapper(self):
