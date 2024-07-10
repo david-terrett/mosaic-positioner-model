@@ -4,6 +4,7 @@ import csv
 from math import floor
 from math import inf
 from math import pi
+from math import sqrt
 from random import random
 import matplotlib.pyplot as plt
 
@@ -26,14 +27,14 @@ class focal_plane(object):
     """
 
     def __init__(self):
-        self._dx = 95.0
-        self._dy = 82.3
+        self._dx = 95.0 * 3.0 / 4.0
+        self._dy = 95.0 * sqrt(3.0) / 2.0
         self._max_sep2 = self._dx*self._dx*4
         self._x_max = 13.0 * self._dx
         self._x_min = -self._x_max
         self._y_max = 12.0 * self._dy
         self._y_min = -self._y_max
-        self._types = [3,5,2,3,5,2,3,1,0,1,2,5,3,2,5,3,2,1,1,   
+        self._types = [3,5,2,3,5,2,3,1,0,1,2,5,3,2,5,3,2,1,1,
                        2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
                        2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
                        3,5,2,3,5,2,3,1,2,1,2,5,3,2,5,3,2,1,1,
@@ -54,9 +55,9 @@ class focal_plane(object):
                        2,3,1,1,3,2,
                        1,1,0,1,0,1,1,
                        1,1,0,1,0,1,1]
-                       
-                       
-                       
+
+
+
     # Build the list of positioners
         self.positioners = []
         self._add_column(0, 19)
