@@ -10,8 +10,12 @@ project(positioner)
 add_subdirectory(geometry)
 
 install(FILES
+    __init__.py
     focal_plane.py
+    geometry_utilities.py
     positioner.py
+    rerun.py
+    resolve_conflict.py
     target.py
-    DESTINATION .
+    DESTINATION positioner_model
 )

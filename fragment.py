@@ -65,7 +65,7 @@ def resolve_conflict(a,b,fig,ax):
                                 return True    # Fixed it
                             else:
                                 b.reverse_last_move(fig,ax)
-                # Still here, so that didn't help        
+                # Still here, so that didn't help
                 if a.move_to_position(fig,ax): # This cleared the problem for a
                     if b.move_to_position(fig,ax):
                         return True   # sorted
@@ -80,10 +80,10 @@ def resolve_conflict(a,b,fig,ax):
                 if a.move_to_position(fig,ax):
                     return True
         print ('Could not find a safe alternate park position for ',b.id)
-                        
-                
-def rerun(istart):
-    for i in ps:
+
+
+def rerun(fp, istart):
+    for i in fp.positioners:
         if (i.id < istart):
             next
         if i.target and not i.in_position:
@@ -139,11 +139,9 @@ def rerun(istart):
                     else:
                         print ("Stuck at ",b.id)
                         break
-    
 
-for i in ps:
+
+for i in fp.positioners:
     if i.target and not i.in_position:
         i.trajectory_from_here_simultaneous(i.tpose)
 rerun(0)
-
-                             

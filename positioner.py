@@ -8,14 +8,14 @@ from math import sin
 import numpy as np
 from matplotlib import pyplot as plt
 
-from geometry import distance
-from geometry import intersects
-from geometry import move_point
-from geometry import move_polygon
-from geometry import point
-from geometry import polygon
-from geometry import rotate_point
-from geometry import rotate_polygon
+from .geometry import distance
+from .geometry import intersects
+from .geometry import point
+from .geometry import polygon
+from .geometry_utilities import move_point
+from .geometry_utilities import move_polygon
+from .geometry_utilities import rotate_point
+from .geometry_utilities import rotate_polygon
 
 class positioner(object):
     """

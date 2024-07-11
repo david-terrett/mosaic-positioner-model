@@ -8,9 +8,9 @@ from math import sqrt
 from random import random
 import matplotlib.pyplot as plt
 
-from geometry import point
-from positioner import positioner
-from target import target
+from .geometry import point
+from .positioner import positioner
+from .target import target
 
 class focal_plane(object):
     """

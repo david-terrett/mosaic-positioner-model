@@ -1,6 +1,6 @@
 # -*- coding utf-8 -*-
 
-from geometry import point
+from .geometry import point
 
 class target(object):
     """

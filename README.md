@@ -44,7 +44,7 @@ use with anaconda.
 
 # Example
 
-    >>> from focal_plane import focal_plane
+    >>> from positioner_model import focal_plane
 
     >>> # Create a focal_plane
     >>> fp = focal_plane()
@@ -56,13 +56,13 @@ use with anaconda.
     >>> # See how many targets were created
     >>> print(len(fp.targets))
 
-    >>> # Run the simple allocation algorithm (takes several seconds)
+    >>> # Run the simple allocation algorithm
     >>> fp.simple_allocator()
 
     >>> # Print a summary of the allocations
     >>> fp.report()
 
-    >>> # Plot - fibers without targets are plotted in red.
+    >>> # Plot
     >>> import matplotlib.pyplot as plt
     >>> fp.plot()
     >>> plt.show()
@@ -101,6 +101,7 @@ Create a branch for your changes
 
     $ cd positioner_model
     $ git branch your_branch_name
+    $git checkout your_branch_name
 
 Commit the files you have modified
 

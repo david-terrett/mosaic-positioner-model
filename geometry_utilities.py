@@ -1,6 +1,7 @@
 # -*- coding utf-8 -*-
 
-from .geometry import point, polygon, intersects, distance
+from .geometry import point
+from .geometry import polygon
 
 def move_point(p, dx, dy):
     """
