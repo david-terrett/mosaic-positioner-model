@@ -217,6 +217,16 @@ class focal_plane(object):
         self.add_targets(targets)
 
 
+    def park_all(self):
+        """
+        Park all positioners
+        """
+        for p in self.positioners:
+            p.park()
+            p.in_position = False
+        return
+
+
     def plot(self):
         """
         Plot positioners
@@ -394,12 +404,6 @@ class focal_plane(object):
             pos.trajectory_from_here_simultaneous(_tdest) # calculate the movement
             pos.pose(_tdest) # set it in position so we can continue the allocations
         return True
-
-    def _park_all(self):
-        for p in self.positioners:
-            p.park()
-            p.in_position = False
-        return
 
     def _move_to_position(self, pos):
         if pos.in_position:
