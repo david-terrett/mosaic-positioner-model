@@ -101,15 +101,19 @@ Create a branch for your changes
 
     $ cd positioner_model
     $ git branch your_branch_name
-    $git checkout your_branch_name
+    $ git checkout your_branch_name
 
 Commit the files you have modified
 
     $ git add files_you_have_modified
-    $ git commit
+    $ git commit -m "short message with changes listed"
 
-Create a git bundle of your repository
+Push this branch to Github
 
-    $ git bundle create positioner_model.bundle your_branch name
+    $ git push -u origin your_branch_name
 
-email the bundle file to david.terrett@ntlworld.com.
+Follow the link from the output of the previous command to create a pull request.
+
+Describe what kind of changes you have made (documentation changes, bug fixing, new features implemented, etc); any additional information that makes it easier for the reviewer to review the pull request.
+
+Click on the green button "Create pull request".
