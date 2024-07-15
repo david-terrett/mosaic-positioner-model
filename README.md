@@ -12,18 +12,17 @@ boost binary libraries.
 - boost geometry
 - matplotlib
 
-# Unpacking
+# Cloning
 
-If you received the software as a git bundle (positioner_model.bundle) you
-unpack it with:
+To make a local copy of the repository for the first time
 
-    $ git clone positioner_model.bundle -b main
+    $ git clone git@github.com:david-terrett/mosaic-positioner-model.git positioner_model
 
 This will create a directory positioner_model containing the source code.
 
-To update an existing copy from a new bundle
+To update an existing copy with the latest version of the code
 
-    $ git pull positioner_model.bundle main
+    $ git pull
 
 # Installation with cmake
 
@@ -117,3 +116,7 @@ Follow the link from the output of the previous command to create a pull request
 Describe what kind of changes you have made (documentation changes, bug fixing, new features implemented, etc); any additional information that makes it easier for the reviewer to review the pull request.
 
 Click on the green button "Create pull request".
+
+Remember to go back to the main branch 
+
+    $ git checkout main
