@@ -3,7 +3,7 @@
 def rerun(fp, istart):
     for i in fp.positioners:
         if i.id < istart:
-            next
+            continue
         if i.target and not i.in_position:
             print ('moving ',i.id)
             if i.move_to_position(fp.figure, fp.axes):
