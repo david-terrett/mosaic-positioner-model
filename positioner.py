@@ -340,7 +340,7 @@ class positioner(object):
     def wrap_angle_ztpi(self, theta):
         # wrap an angle into 0 < theta < 2*pi
         angle = self.wrap_angle_pmpi(theta)
-        if (angle < 0):
+        if angle < 0:
             angle = abs(angle) + 2 * (np.pi - abs(angle))
         return angle
 
@@ -349,7 +349,7 @@ class positioner(object):
         xmax = self._axis_1_base.x() + winsize/2
         ymin = self._axis_1_base.y() - winsize/2
         ymax = self._axis_1_base.y() + winsize/2
-        if (figure):
+        if figure:
             figure.gca().axis([xmin,xmax,ymin,ymax])
             plt.draw()
             plt.pause(0.002)
@@ -511,7 +511,6 @@ class positioner(object):
         """
         abend = self.pose_to_arm_angles(theta) # final alpha beta in -pi < angle < pi
         pstart = abend.copy()
-        pend = theta
         pstart[0] = self.theta_1
         pstart[1] = self.theta_2
         abstart = self.pose_to_arm_angles(pstart) # initial alpha beta in -pi < angle < pi

@@ -14,8 +14,9 @@ parks = [[-pi,-2*pi],
 
 def resolve_conflict(a, b, fig, ax):
     # assume we have already tried to move a and hit b:
-    # assume we are done if a gets to position, leave b wherever we have to to do this unless it was already in position
-    # park is [0,pi] so we can try an array of alternate park positions
+    # assume we are done if a gets to position, leave b wherever we have to to do
+    # this unless it was already # in position # park is [0,pi] so we can try an
+    # array of alternate park positions
     if b.target:
         if not b.in_position:
             # try to move it. If it goes to its destination safely this should be the best outcome

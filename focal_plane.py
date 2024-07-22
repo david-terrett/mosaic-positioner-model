@@ -194,7 +194,7 @@ class focal_plane(object):
         n = int(density * area / 3600.0)
 
         targets = []
-        for i in range(0, n):
+        for _ in range(0, n):
             x = self._x_min + random() * (self._x_max - self._x_min)
             y = self._y_min + random() * (self._y_max - self._y_min)
             targets.append(target(x, y))
@@ -585,6 +585,7 @@ class focal_plane(object):
                     this_pos.pose(this_pos.targets[t1][1])
                 else:
                     this_pos.pose(this_pos.targets[t1][0])
+                p = None
                 for p in self.positioners:
                     if p is not other_pos:
                         if p.collides_with(this_pos):

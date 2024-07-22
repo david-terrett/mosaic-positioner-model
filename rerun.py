@@ -1,7 +1,5 @@
 # -*- coding utf-8 -*-
 
-from .focal_plane import focal_plane
-
 def rerun(fp, istart):
     for i in fp.positioners:
         if i.id < istart:
@@ -16,7 +14,7 @@ def rerun(fp, istart):
                     continue
             else:
                 b = i.collision_list[0]
-                if (not b.in_position):
+                if not b.in_position:
                     if b.move_to_position(fp.figure, fp.axes):
                         if i.move_to_position(fp.figure, fp.axes):
                             inp=input('Next ?')
