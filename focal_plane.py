@@ -1,5 +1,6 @@
 # -*- coding utf-8 -*-
 
+from ast import literal_eval
 import csv
 from math import floor
 from math import inf
@@ -110,6 +111,38 @@ class focal_plane(object):
         self.live_view = False
 
 
+    def add_random_targets(self, density, ir=False, vis=False):
+        """
+        Create random targets and add them to the positioners
+
+        Parameters
+        ---------
+        density : float
+            Density of targets to create (number per arcmin^2)
+        ir : bool
+            create IR targets
+        vis : bool
+            create VIS targets
+        """
+
+        # Plate scale (mm/arcsec)
+        plate_scale = 3.316
+
+        # Area to cover (arcsec^2)
+        area = ((self._x_max - self._x_min) * (self._y_max - self._y_min) /
+                (plate_scale * plate_scale))
+
+        # Number of targets to create
+        n = int(density * area / 3600.0)
+
+        targets = []
+        for _ in range(0, n):
+            x = self._x_min + random() * (self._x_max - self._x_min)
+            y = self._y_min + random() * (self._y_max - self._y_min)
+            targets.append(target(x, y, ir, vis))
+        self.add_targets(targets)
+
+
     def add_targets(self, targets):
         """
         Add targets to the positioners
@@ -172,35 +205,6 @@ class focal_plane(object):
         self.positioned = 0
 
 
-    def create_random_targets(self, density):
-        """
-        Create random targets and add them to the positioners
-
-        Parameters
-        ---------
-        density : float
-            Density of targets to create (number per arcmin^2)
-        """
-        self.targets = []
-
-        # Plate scale (mm/arcsec)
-        plate_scale = 3.316
-
-        # Area to cover (arcsec^2)
-        area = ((self._x_max - self._x_min) * (self._y_max - self._y_min) /
-                (plate_scale * plate_scale))
-
-        # Number of targets to create
-        n = int(density * area / 3600.0)
-
-        targets = []
-        for _ in range(0, n):
-            x = self._x_min + random() * (self._x_max - self._x_min)
-            y = self._y_min + random() * (self._y_max - self._y_min)
-            targets.append(target(x, y))
-        self.add_targets(targets)
-
-
     def load_targets(self, csvfile):
         """
         Load targets from a CVS file
@@ -210,10 +214,12 @@ class focal_plane(object):
         csvfile : file
             File to load from
         """
-        reader = csv.DictReader(csvfile, quoting=csv.QUOTE_NONNUMERIC)
+        reader = csv.DictReader(csvfile)
         targets = []
         for row in reader:
-            targets.append(target(row['X'], row['Y']))
+            targets.append(target(float(row['X']), float(row['Y']),
+                                  literal_eval(row['IR']),
+                                  literal_eval(row['VIS'])))
         self.add_targets(targets)
 
 
@@ -303,11 +309,12 @@ class focal_plane(object):
         csvfile : file
             File to save to
         """
-        writer = csv.DictWriter(csvfile, fieldnames=['X', 'Y'],
-                                quoting=csv.QUOTE_NONNUMERIC)
+        writer = csv.DictWriter(csvfile, fieldnames=['X', 'Y', 'IR', 'VIS'],
+                                quoting=csv.QUOTE_MINIMAL)
         writer.writeheader()
         for t in self.targets:
-            writer.writerow({'X': t.position.x(), 'Y': t.position.y()})
+            writer.writerow({'X': t.position.x(), 'Y': t.position.y(),
+                             'IR': t.ir, 'VIS': t.vis})
 
 
     def _add_column(self, x, n):
@@ -559,9 +566,16 @@ class focal_plane(object):
             except ValueError:
                 pass
         self._target_markers = []
+        color = 'white'
         for t in self.targets:
+            if t.vis and not t.ir:
+                color = 'green'
+            elif t.ir and not t.vis:
+                color = 'red'
+            elif t.ir and t.vis:
+                color = 'brown'
             self._target_markers.append(self.axes.plot(t.position.x(),
-                                        t.position.y(), '.', color='black',
+                                        t.position.y(), '.', color=color,
                                         markersize=1.0))
 
 

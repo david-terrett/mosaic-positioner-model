@@ -50,7 +50,8 @@ use with anaconda.
 
     >>> # Create some targets and compute which are reachable by each
     >>> # positioner. density is per square arcmin.
-    >>> fp.create_random_targets(density=10)
+    >>> fp.add_random_targets(density=5, ir=True)
+    >>> fp.add_random_targets(density=5, vis=True)
 
     >>> # See how many targets were created
     >>> print(len(fp.targets))
@@ -65,6 +66,15 @@ use with anaconda.
     >>> import matplotlib.pyplot as plt
     >>> fp.plot()
     >>> plt.show()
+
+    >>> # Save the targets to a CSV file
+    >>> with open('test'csv', 'w') as f:
+    ...     fp.save_targets(f)
+
+    >>> # Read them back in
+    >>> fp.clear_targets()
+    >>> with open('test.csv) as f:
+    ...    fp.load_targets(f)
 
     >>> # Get help on the focal plane model classes.
     >>> import focal_plane
@@ -117,6 +127,6 @@ Describe what kind of changes you have made (documentation changes, bug fixing, 
 
 Click on the green button "Create pull request".
 
-Remember to go back to the main branch 
+Remember to go back to the main branch
 
     $ git checkout main

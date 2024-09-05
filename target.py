@@ -20,7 +20,7 @@ class target(object):
             A list of the positioners that can reach this target
     """
 
-    def __init__(self, x, y):
+    def __init__(self, x, y, ir=False, vis=False):
         """
         Parameters
         ----------
@@ -28,7 +28,13 @@ class target(object):
             x position in focal plane
         y : float
             y position in focal plane
+        id : bool
+            target is IR
+        id : bool
+            target is VIS
         """
         self.position = point(x, y)
         self.positioner = None
         self.reachable = []
+        self.ir = ir
+        self.vis = vis
