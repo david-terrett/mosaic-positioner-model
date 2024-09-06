@@ -204,7 +204,7 @@ class positioner(object):
 
         Returns
         -------
-        : boolean
+        : bool
             True if the target is reachable
         """
         reachable = False
@@ -301,7 +301,7 @@ class positioner(object):
 
         Returns
         -------
-        : boolean
+        : bool
             True if the positioners collide
         """
         if other is self:

@@ -173,7 +173,7 @@ class focal_plane(object):
 
         Returns
         -------
-        : boolean
+        : bool
             True if there are no collisions
         """
         for p in self.positioners:
