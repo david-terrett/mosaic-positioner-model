@@ -98,7 +98,8 @@ class focal_plane(object):
                         p.neighbours.append(q)
 
         # No targets allocated
-        self.allocated = 0
+        self.ir_allocated = 0
+        self.vis_allocated = 0
         self.positioned = 0
 
         # empty list of targets
@@ -191,7 +192,8 @@ class focal_plane(object):
             p[0].remove()
         self._target_markers = []
         self.targets = []
-        self.allocated = 0
+        self.ir_allocated = 0
+        self.vis_allocated = 0
         self.positioned = 0
 
 
@@ -201,7 +203,8 @@ class focal_plane(object):
         """
         for pos in self.positioners:
             pos.assign_target(None)
-        self.allocated = 0
+        self.ir_allocated = 0
+        self.vis_allocated = 0
         self.positioned = 0
 
 
@@ -282,15 +285,16 @@ class focal_plane(object):
         Print stuff about the state of the positioner
         """
         print(f"there are {len(self.targets)} targets in the field")
-        print("{0} positioners out of {1} don't have a target allocated".
-              format(len(self.positioners) - self.allocated,
-              len(self.positioners)))
+        print(f"{self.ir_allocated} IR targets assigned to a positioner")
+        print(f"{self.vis_allocated} VIS targets assigned to a positioner")
+        unalloc = len(self.positioners) - self.ir_allocated - self.vis_allocated
+        print(f"{unalloc} positioners out of {len(self.positioners)} don't have a target allocated")
         unreachable = 0
         one_target = 0
         for p in self.positioners:
-            if len(p.targets) == 0:
+            if len(p.ir_targets) + len(p.vis_targets) == 0:
                 unreachable += 1
-            elif len(p.targets) == 1:
+            elif len(p.ir_targets) + len(p.vis_targets) == 1:
                 one_target += 1
         if unreachable > 0:
             print(f"of these {unreachable} can't reach any targets")
@@ -357,35 +361,40 @@ class focal_plane(object):
 
         # sort the list of positioners so that we allocate the ones
         # with the fewest targets first
-        positioners = sorted(self.positioners, key=lambda p: len(p.targets))
+        positioners = sorted(self.positioners,
+                             key=lambda p: len(p.ir_targets) + len(p.vis_targets))
 
         # Until there are no unallocated positioners left...
-        alloc = self.allocated
-        while self.allocated < len(self.positioners):
+        alloc = self.ir_allocated + self.vis_allocated
+        while self.ir_allocated + self.vis_allocated < len(self.positioners):
             for pos in positioners:
 
                 # If this positioner doesn't have a target
                 if not pos.target:
 
-                    # Sort the list of potential targets so that we try the
-                    # ones with the fewest positioners that can reach it first
-                    targets = sorted([*pos.targets],
-                                     key=lambda t: len(t.reachable))
-                    for t in targets:
+                    # Try to assign an IR target
+                    for t in [*pos.ir_targets]:
                         if not t.positioner:
-                            if self._assign_target_to_positioner(pos, t):
+                            if self._assign_target_to_positioner(pos, t, True):
                                 break
 
+                    # If still no target then try for a visible one
+                    if not pos.target:
+                        for t in [*pos.vis_targets]:
+                            if not t.positioner:
+                                if self._assign_target_to_positioner(pos, t, False):
+                                    break
+
             # If that pass didn't find any more, give up.
-            if alloc == self.allocated:
+            if alloc == self.ir_allocated + self.vis_allocated:
                 break
-            alloc = self.allocated
+            alloc = self.ir_allocated + self.vis_allocated
 
         # Turn off live view at the end anyway, to keep everything tidy
         self.live_view = False
 
 
-    def _assign_target_to_positioner(self, pos, t):
+    def _assign_target_to_positioner(self, pos, t, ir):
         """
         Try assigning a target to positioner. If we can't find a target that
         doesn't cause a collision with another positioner, put the positioner
@@ -394,19 +403,22 @@ class focal_plane(object):
         current_theta_1 = pos.theta_1
         current_theta_2 = pos.theta_2
         current_target = pos.target
-        pos.assign_target(t, False)
+        pos.assign_target(t, ir, False)
         if self._has_collision(pos):
-            pos.assign_target(t, True)
+            pos.assign_target(t, ir, True)
             if self._has_collision(pos):
                 pos.assign_target(current_target)
                 pos.pose([current_theta_1, current_theta_2])
                 return False
-        self.allocated += 1
+        if ir:
+            self.ir_allocated += 1
+        else:
+            self.vis_allocated += 1
         pos.in_position = False # Assigned a target, but haven't got there yet
         if True: # (self.live_view):
             # set up the move sequence
             _tdest = [pos.theta_1,pos.theta_2]
-            _tpos = pos.fiber
+            #_tpos = pos.fiber
             pos.pose([current_theta_1,current_theta_2]) # set it back to park for a second
             pos.trajectory_from_here_simultaneous(_tdest) # calculate the movement
             pos.pose(_tdest) # set it in position so we can continue the allocations

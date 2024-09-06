@@ -7,6 +7,7 @@ from math import pi
 from math import sin
 import numpy as np
 from matplotlib import pyplot as plt
+from matplotlib.patches import Ellipse
 
 from .geometry import distance
 from .geometry import intersects
@@ -29,18 +30,26 @@ class positioner(object):
         outline of the upper arm
     axis_2 : point
         position of second axis in focal plane
-    fiber : point
-        location of fiber in focal plane
-    max_r : float
-        The maximum reach of the positioner
-    min_r : float
-        The minimum reach of the positioner
-    targets : dict
-        A dictionary of reachable targets indexed by target
+    ir_fiber : point
+        location of IR fiber in focal plane
+    ir_max_r : float
+        The maximum reach of the positioner with the IR fibre
+    ir_min_r : float
+        The minimum reach of the positioner with the IR fibre
+    ir_targets : dict
+        A dictionary of reachable IR targets indexed by target
     theta_1 : float
         Angle of lower arm relative to x axis (radians)
     theta_2 : float
         Angle of lower arm relative to x axis (radians)
+    vis_fiber : point
+        location of VIS fiber in focal plane
+    vis_max_r : float
+        The maximum reach of the positioner with the VIS fibre
+    vis_min_r : float
+        The minimum reach of the positioner with the VIS fibre
+    vis_targets : dict
+        A dictionary of reachable VIS targets indexed by target
     """
 
 
@@ -55,17 +64,20 @@ class positioner(object):
         """
         self.position = position
         self.id = ident
-        self.targets = {}
+        self.ir_targets = {}
+        self.vis_targets = {}
         self.target = None
         self.neighbours = []
         self.d = []
+        self.ir_e = None
+        self.vis_e = None
 
-        # type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS, 5: NIR+VIS-HR, 8: Camera (i.e. a bit mask)
+        # type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
+        # 5: NIR+VIS-HR, 8: Camera (i.e. a bit mask)
         self.colours={0:'w',1:'r',2:'b',3:'m',5:'g',8:'c'}
         self.type = type
 
-
-        # Define the rotation axis of arm 1 for a positioner at placed at 0,0
+        # Define the rotation axis of arm 1 for a positioner placed at 0,0
         axis_1 = point(0.0, 0.0)
 
         # Construct outline of lower positioner arm in the initial position
@@ -132,19 +144,22 @@ class positioner(object):
         arm_2.append(point(w, -l1))
         arm_2.append(point(w, 0))
 
-        # Fibre position
-        fiber = point(0.0, -57.0)
+        # Fibre positions
+        ir_fiber = point(4.0, -57.0)
+        vis_fiber = point(-4.0, -57.0)
 
         # Move arm 2 onto its axis position
         arm_2 = move_polygon(arm_2, axis_2.x(), axis_2.y())
-        fiber = move_point(fiber, axis_2.x(), axis_2.y())
+        ir_fiber = move_point(ir_fiber, axis_2.x(), axis_2.y())
+        vis_fiber = move_point(vis_fiber, axis_2.x(), axis_2.y())
 
         # Move everything to the positioner's position
         self._axis_1_base = move_point(axis_1, position.x(), position.y())
         self._arm_1_base = move_polygon(arm_1, position.x(), position.y())
         self._axis_2_base = move_point(axis_2, position.x(), position.y())
         self._arm_2_base = move_polygon(arm_2, position.x(), position.y())
-        self._fiber_base = move_point(fiber, position.x(), position.y())
+        self._ir_fiber_base = move_point(ir_fiber, position.x(), position.y())
+        self._vis_fiber_base = move_point(vis_fiber, position.x(), position.y())
 
         # Set the axes to the angles we used when defining the geometry
         self._theta_1_base = pi/2.0
@@ -153,18 +168,23 @@ class positioner(object):
         # Calculate the distances from axis 1 to axis 2 and axis 2 to the
         # fiber (need for calculating the arm angles to reach a point).
         self._axis_1_to_axis_2 = distance(axis_1, axis_2)
-        self._axis_2_to_fiber = distance(axis_2, fiber)
+        self._axis_2_to_ir_fiber = distance(axis_2, ir_fiber)
+        self._axis_2_to_vis_fiber = distance(axis_2, vis_fiber)
 
         # Define the maximum and minimum radius the fibre can reach from the
         # arm 1 axis
-        self.max_r = self._axis_1_to_axis_2 + self._axis_2_to_fiber
-        self.min_r = fabs(self._axis_2_to_fiber - self._axis_1_to_axis_2)
+        self.ir_max_r = self._axis_1_to_axis_2 + self._axis_2_to_ir_fiber
+        self.ir_min_r = fabs(self._axis_2_to_ir_fiber - self._axis_1_to_axis_2)
+        self.vis_max_r = self._axis_1_to_axis_2 + self._axis_2_to_vis_fiber
+        self.vis_min_r = fabs(self._axis_2_to_vis_fiber - self._axis_1_to_axis_2)
 
         # Define the angle offsets between the arm 1 and axis 2 and arm 2
         # and the fiber.
         self._arm_1_angle_offset = atan2(axis_2.y(), axis_2.x()) - pi / 2.0
-        self._arm_2_angle_offset = atan2(fiber.y() - axis_2.y(),
-                                        fiber.x() - axis_2.x()) + pi / 2.0
+        self._ir_arm_2_angle_offset = atan2(ir_fiber.y() - axis_2.y(),
+                                            ir_fiber.x() - axis_2.x()) + pi / 2.0
+        self._vis_arm_2_angle_offset = atan2(vis_fiber.y() - axis_2.y(),
+                                             vis_fiber.x() - axis_2.x()) + pi / 2.0
 
         # Park the positioner
         self.tpose = [0., pi]
@@ -187,15 +207,21 @@ class positioner(object):
         : boolean
             True if the target is reachable
         """
-        if self.can_reach(t.position):
-            self.targets[t] = self._arm_angles(t.position)
+        reachable = False
+        if t.ir:
+            if self.can_reach(t.position, True):
+                self.ir_targets[t] = self._arm_angles(t.position, True)
+                reachable = True
+        if t.vis:
+            if self.can_reach(t.position, False):
+                self.vis_targets[t] = self._arm_angles(t.position, False)
+                reachable = True
+        if reachable:
             t.reachable.append(self)
-        else:
-            return False
-        return True
+        return reachable
 
 
-    def assign_target(self, t, alt=False):
+    def assign_target(self, t, ir=True, alt=False):
         """
         Assign a target to the positioner
 
@@ -203,22 +229,36 @@ class positioner(object):
         ----------
         t : target
             target to assign
-        alt : boolean
+        ir : bool
+            use IR fiber
+        alt : bool
             Use alternate arm position
         """
+
+        # Deallocate existing target
         if self.target:
             self.target.positioner = None
         if t:
-            if alt:
-                self.tpose = self.targets[t][0]
+            if ir:
+                if not alt:
+                    self.tpose = self.ir_targets[t][0]
+                else:
+                    self.tpose = self.ir_targets[t][1]
             else:
-                self.tpose = self.targets[t][1]
+                if not alt:
+                    self.tpose = self.vis_targets[t][0]
+                else:
+                    self.tpose = self.vis_targets[t][1]
             self.pose(self.tpose)
+
+            # Assign the positioner to the target
             t.positioner = self
+
+        # Assign the target to the postioner
         self.target = t
 
 
-    def can_reach(self, p):
+    def can_reach(self, p, ir):
         """
         Fiber can reach point
 
@@ -226,15 +266,20 @@ class positioner(object):
         ----------
         p : point
             position to test
+        ir : bool
+            if true test IR fiber otherwise test VIS
 
         Returns
         -------
-        : boolean
+        : bool
             True if the fiber can be positioned at the specified point
         """
         r2 = ((p.x() - self._axis_1_base.x()) * (p.x() - self._axis_1_base.x()) +
               (p.y() - self._axis_1_base.y()) * (p.y() - self._axis_1_base.y()))
-        return r2 < self.max_r * self.max_r and r2 > self.min_r * self.min_r
+        if ir:
+            return r2 < self.ir_max_r * self.ir_max_r and r2 > self.ir_min_r * self.ir_min_r
+        else:
+            return r2 < self.vis_max_r * self.vis_max_r and r2 > self.vis_min_r * self.vis_min_r
 
 
     def clear_targets(self):
@@ -242,7 +287,8 @@ class positioner(object):
         Clear the list of reachable targets
         """
         self.assign_target(None)
-        self.targets = {}
+        self.ir_targets = {}
+        self.vis_targets = {}
 
 
     def collides_with(self, other):
@@ -286,6 +332,12 @@ class positioner(object):
         for d in self.d:
             d[0].remove()
         self.d = []
+        if self.ir_e:
+            self.ir_e.remove()
+            self.ir_e = None
+        if self.vis_e:
+            self.vis_e.remove()
+            self.vis_e = None
 
         # Draw the arms
         self.d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
@@ -304,9 +356,17 @@ class positioner(object):
         else:
             c = 'red'
 
-        # Draw the fiber
-        self.d.append(ax.plot(self.fiber.x(), self.fiber.y(), 'o', color='red',
-                      markersize=4.0))
+        # Draw the fibers
+        #self.d.append(ax.plot(self.ir_fiber.x(), self.ir_fiber.y(), 'o', color='red',
+        #              markersize=4.0))
+        #self.d.append(ax.plot(self.vis_fiber.x(), self.vis_fiber.y(), 'o', color='red',
+        #              markersize=4.0))
+        self.ir_e = ax.add_patch(Ellipse(xy=(self.ir_fiber.x(), self.ir_fiber.y()),
+                                           width=5, height=5, angle=0,
+                                           facecolor="none", edgecolor='red'))
+        self.vis_e = ax.add_patch(Ellipse(xy=(self.vis_fiber.x(), self.vis_fiber.y()),
+                                           width=5, height=5, angle=0,
+                                           facecolor="none", edgecolor='red'))
 
 
     def directions(self, t_end):
@@ -557,24 +617,30 @@ class positioner(object):
         # Move arm 2 to the new axis 2 position.
         arm_2 = move_polygon(self._arm_2_base, self.axis_2.x() - self._axis_2_base.x(),
                              self.axis_2.y() - self._axis_2_base.y())
-        fiber = move_point(self._fiber_base, self.axis_2.x() - self._axis_2_base.x(),
+        ir_fiber = move_point(self._ir_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
+        vis_fiber = move_point(self._vis_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
                              self.axis_2.y() - self._axis_2_base.y())
 
         # Rotate arm 2
         c = cos(theta[1] - self._theta_2_base)
         s = sin(theta[1] - self._theta_2_base)
         self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
-        self.fiber = rotate_point(fiber, self.axis_2, c, s)
+        self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
+        self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
 
 
-    def _arm_angles(self, p):
+    def _arm_angles(self, p, ir):
 
         # Bearing of target
         t = atan2(p.y() - self._axis_1_base.y(), p.x() - self._axis_1_base.x())
 
         # Solve for the angles of a triangle formed by axis 1 (A), axis 2 (B)
         # and the fiber (C)
-        a = self._axis_2_to_fiber
+        if ir:
+            a = self._axis_2_to_ir_fiber
+        else:
+            a = self._axis_2_to_vis_fiber
         b = distance(self._axis_1_base, p)
         c = self._axis_1_to_axis_2
         A = acos((b * b + c * c - a * a)/(2.0 * b * c))
@@ -588,5 +654,9 @@ class positioner(object):
         arm_1_2 = t + A
         arm_2_2 = arm_1_2 - pi + B
 
-        return ([arm_1_1 - self._arm_1_angle_offset, arm_2_1 - self._arm_2_angle_offset],
-                [arm_1_2 - self._arm_1_angle_offset, arm_2_2 - self._arm_2_angle_offset])
+        if ir:
+            arm_2_angle_offset = self._ir_arm_2_angle_offset
+        else:
+            arm_2_angle_offset = self._vis_arm_2_angle_offset
+        return ([arm_1_1 - self._arm_1_angle_offset, arm_2_1 - arm_2_angle_offset],
+                [arm_1_2 - self._arm_1_angle_offset, arm_2_2 - arm_2_angle_offset])
