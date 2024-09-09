@@ -30,6 +30,8 @@ class positioner(object):
         outline of the upper arm
     axis_2 : point
         position of second axis in focal plane
+    id : any
+        an identifier for the positioner
     ir_fiber : point
         location of IR fiber in focal plane
     ir_max_r : float
@@ -38,6 +40,11 @@ class positioner(object):
         The minimum reach of the positioner with the IR fibre
     ir_targets : dict
         A dictionary of reachable IR targets indexed by target
+    neighbours : list
+        A list of neighbouring positioners
+    type : int
+        type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
+        5: NIR+VIS-HR, 8: Camera (i.e. a bit mask)
     theta_1 : float
         Angle of lower arm relative to x axis (radians)
     theta_2 : float
@@ -61,21 +68,21 @@ class positioner(object):
         ----------
         position : point
             position of positioner axis 1 in focal plane
+        ident : any
+            identifier for the positioner
+        type : int
+            the type of positioner
         """
         self.position = position
         self.id = ident
+        self.type = type
         self.ir_targets = {}
         self.vis_targets = {}
         self.target = None
         self.neighbours = []
-        self.d = []
-        self.ir_e = None
-        self.vis_e = None
-
-        # type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
-        # 5: NIR+VIS-HR, 8: Camera (i.e. a bit mask)
-        self.colours={0:'w',1:'r',2:'b',3:'m',5:'g',8:'c'}
-        self.type = type
+        self._d = []
+        self._patches = []
+        self._colours={0:'w',1:'r',2:'b',3:'m',5:'g',8:'c'}
 
         # Define the rotation axis of arm 1 for a positioner placed at 0,0
         axis_1 = point(0.0, 0.0)
@@ -83,16 +90,6 @@ class positioner(object):
         # Construct outline of lower positioner arm in the initial position
         # (angle 90, so parallel to the Y axis)
         arm_1 = polygon()
-
-        #        w = 24.7 / 2.0
-        #        l1 = 39.8
-        #        l2 = w/2.0
-        #        arm_1.append(point(w, -l2))
-        #        arm_1.append(point(w, l1))
-        #        arm_1.append(point(-w, l1))
-        #        arm_1.append(point(-w, -l2))
-        #        arm_1.append(point(w, -l2))
-
         w = 25 / 2.0
         l1 = 28.5
         l2 = w
@@ -121,15 +118,6 @@ class positioner(object):
         arm_2 = polygon()
         l1 = 57.0
         l2 = 12.5
-
-        #        arm_2.append(point(w, l2))
-        #        arm_2.append(point(-w, l2))
-        #        arm_2.append(point(-w, -l1 - l2 + w * 2.0))
-        #        arm_2.append(point(-w * 3.0, -l1 - l2 + w * 2.0))
-        #        arm_2.append(point(-w * 3.00, -l1 - l2))
-        #        arm_2.append(point(w, -l1 - l2))
-        #        arm_2.append(point(w, l2))
-
         for i in range(0,semicirc_points+1):
             t = pi*float(i)/semicirc_points
             xx = l2*cos(t)
@@ -189,7 +177,6 @@ class positioner(object):
         # Park the positioner
         self.tpose = [0., pi]
         self.park()
-
 
 
     def add_target(self, t):
@@ -329,25 +316,23 @@ class positioner(object):
                 plot axes
         """
         # Delete existing drawing
-        for d in self.d:
+        for d in self._d:
             d[0].remove()
-        self.d = []
-        if self.ir_e:
-            self.ir_e.remove()
-            self.ir_e = None
-        if self.vis_e:
-            self.vis_e.remove()
-            self.vis_e = None
+        self._d = []
+        for patch in self._patches:
+            patch.remove()
+        self._patches = []
 
         # Draw the arms
-        self.d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
-        self.d.append(ax.plot(self.arm_2.x(), self.arm_2.y(), color=self.colours[self.type]))
+        self._d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
+        self._d.append(ax.plot(self.arm_2.x(), self.arm_2.y(),
+                               color=self._colours[self.type]))
 
         # Draw the axes
-        self.d.append(ax.plot(self._axis_1_base.x(), self._axis_1_base.y(),
-                              '+', color='black', markersize=4.0))
-        self.d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
-                              color='black', markersize=4.0))
+        self._d.append(ax.plot(self._axis_1_base.x(), self._axis_1_base.y(),
+                               '+', color='black', markersize=4.0))
+        self._d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
+                               color='black', markersize=4.0))
         if self.target:
             if (self.in_position):
                 c = 'blue'
@@ -361,12 +346,12 @@ class positioner(object):
         #              markersize=4.0))
         #self.d.append(ax.plot(self.vis_fiber.x(), self.vis_fiber.y(), 'o', color='red',
         #              markersize=4.0))
-        self.ir_e = ax.add_patch(Ellipse(xy=(self.ir_fiber.x(), self.ir_fiber.y()),
-                                           width=5, height=5, angle=0,
-                                           facecolor="none", edgecolor='red'))
-        self.vis_e = ax.add_patch(Ellipse(xy=(self.vis_fiber.x(), self.vis_fiber.y()),
-                                           width=5, height=5, angle=0,
-                                           facecolor="none", edgecolor='red'))
+        self._patches.append(ax.add_patch(Ellipse(xy=(self.ir_fiber.x(), self.ir_fiber.y()),
+                                          width=5, height=5, angle=0,
+                                          facecolor="none", edgecolor='red')))
+        self._patches.append(ax.add_patch(Ellipse(xy=(self.vis_fiber.x(), self.vis_fiber.y()),
+                                          width=5, height=5, angle=0,
+                                          facecolor="none", edgecolor='red')))
 
 
     def directions(self, t_end):

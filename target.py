@@ -28,9 +28,9 @@ class target(object):
             x position in focal plane
         y : float
             y position in focal plane
-        id : bool
+        ir : bool
             target is IR
-        id : bool
+        vis : bool
             target is VIS
         """
         self.position = point(x, y)
