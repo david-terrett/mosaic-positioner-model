@@ -199,7 +199,7 @@ class positioner(object):
             if self.can_reach(t.position, True):
                 self.ir_targets[t] = self._arm_angles(t.position, True)
                 reachable = True
-        if t.vis:
+        if t.vis_lr or t.vis_hr:
             if self.can_reach(t.position, False):
                 self.vis_targets[t] = self._arm_angles(t.position, False)
                 reachable = True

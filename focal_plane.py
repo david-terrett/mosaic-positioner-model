@@ -112,7 +112,7 @@ class focal_plane(object):
         self.live_view = False
 
 
-    def add_random_targets(self, density, ir=False, vis=False):
+    def add_random_targets(self, density, ir=False, vis_lr=False, vis_hr=False):
         """
         Create random targets and add them to the positioners
 
@@ -122,8 +122,10 @@ class focal_plane(object):
             Density of targets to create (number per arcmin^2)
         ir : bool
             create IR targets
-        vis : bool
-            create VIS targets
+        vis_lr : bool
+            create VIS low res targets
+        vis_hr : bool
+            create VIS high res targets
         """
 
         # Plate scale (mm/arcsec)
@@ -140,7 +142,7 @@ class focal_plane(object):
         for _ in range(0, n):
             x = self._x_min + random() * (self._x_max - self._x_min)
             y = self._y_min + random() * (self._y_max - self._y_min)
-            targets.append(target(x, y, ir, vis))
+            targets.append(target(x, y, ir=ir, vis_lr=vis_lr, vis_hr=vis_hr))
         self.add_targets(targets)
 
 
@@ -221,8 +223,9 @@ class focal_plane(object):
         targets = []
         for row in reader:
             targets.append(target(float(row['X']), float(row['Y']),
-                                  literal_eval(row['IR']),
-                                  literal_eval(row['VIS'])))
+                                  ir=literal_eval(row['IR']),
+                                  vis_lr=literal_eval(row['VIS_LR']),
+                                  vis_hr=literal_eval(row['VIS_HR'])))
         self.add_targets(targets)
 
 
@@ -313,12 +316,14 @@ class focal_plane(object):
         csvfile : file
             File to save to
         """
-        writer = csv.DictWriter(csvfile, fieldnames=['X', 'Y', 'IR', 'VIS'],
+        writer = csv.DictWriter(csvfile,
+                                fieldnames=['X', 'Y', 'IR', 'VIS_LR', 'VIS_HR'],
                                 quoting=csv.QUOTE_MINIMAL)
         writer.writeheader()
         for t in self.targets:
             writer.writerow({'X': t.position.x(), 'Y': t.position.y(),
-                             'IR': t.ir, 'VIS': t.vis})
+                             'IR': t.ir, 'VIS_LR': t.vis_lr,
+                             'VIS_HR': t.vis_hr})
 
 
     def _add_column(self, x, n):
@@ -580,11 +585,11 @@ class focal_plane(object):
         self._target_markers = []
         color = 'white'
         for t in self.targets:
-            if t.vis and not t.ir:
+            if t.vis_lr or t.vis_hr and not t.ir:
                 color = 'green'
-            elif t.ir and not t.vis:
+            elif t.ir and not t.vis_lr or t.vis_hr:
                 color = 'red'
-            elif t.ir and t.vis:
+            elif t.ir and t.vis_lr or t.vis_hr:
                 color = 'brown'
             self._target_markers.append(self.axes.plot(t.position.x(),
                                         t.position.y(), '.', color=color,
