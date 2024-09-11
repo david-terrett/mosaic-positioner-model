@@ -43,15 +43,15 @@ use with anaconda.
 
 # Example
 
-    >>> from positioner_model import focal_plane
+    >>> from positioner_model import *
 
     >>> # Create a focal_plane
     >>> fp = focal_plane()
 
     >>> # Create some targets and compute which are reachable by each
     >>> # positioner. density is per square arcmin.
-    >>> fp.add_random_targets(density=5, ir=True)
-    >>> fp.add_random_targets(density=5, vis=True)
+    >>> add_random_targets(fp, density=5, ir=True)
+    >>> add_random_targets(fp, density=5, vis=True)
 
     >>> # See how many targets were created
     >>> print(len(fp.targets))
@@ -123,7 +123,9 @@ Push this branch to Github
 
 Follow the link from the output of the previous command to create a pull request.
 
-Describe what kind of changes you have made (documentation changes, bug fixing, new features implemented, etc); any additional information that makes it easier for the reviewer to review the pull request.
+Describe what kind of changes you have made (documentation changes, bug fixing,
+new features implemented, etc); any additional information that makes it easier
+for the reviewer to review the pull request.
 
 Click on the green button "Create pull request".
 

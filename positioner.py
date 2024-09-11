@@ -381,31 +381,6 @@ class positioner(object):
         print(dt1, dt2)
         return dt1, dt2
 
-
-    def pose_to_arm_angles(self,theta):
-        # need to wrap angles here
-        t = self.wrap_angle_pmpi(theta)
-        arm_angles=t.copy()
-        arm_angles[1] = self.wrap_angle_pmpi(self.wrap_angle_pmpi(t[1] - t[0]) - pi)
-        return arm_angles
-
-    def arm_angles_to_pose(self,theta):
-        # need to wrap angles here
-        pose = theta.copy()
-        pose[1] = self.wrap_angle_pmpi(theta[1]+theta[0]+pi)
-        return pose
-
-    def wrap_angle_pmpi(self, theta):
-        # wrap an angle into -pi < theta < pi
-        return np.arctan2(np.sin(theta), np.cos(theta))
-
-    def wrap_angle_ztpi(self, theta):
-        # wrap an angle into 0 < theta < 2*pi
-        angle = self.wrap_angle_pmpi(theta)
-        if angle < 0:
-            angle = abs(angle) + 2 * (np.pi - abs(angle))
-        return angle
-
     def zoom_to(self, figure, winsize=240):
         xmin = self._axis_1_base.x() - winsize/2
         xmax = self._axis_1_base.x() + winsize/2
@@ -416,14 +391,6 @@ class positioner(object):
             plt.draw()
             plt.pause(0.002)
         return
-
-    def _has_collision(self):
-        self.collision_list = []
-        for p in self.neighbours:
-            if self.collides_with(p):
-                self.collision_list.append(p)
-                return True
-        return False
 
     def step_one_pose(self,figure,axes,forward=True):
         '''
@@ -571,11 +538,11 @@ class positioner(object):
         """
         Move both arms in 50 steps together
         """
-        abend = self.pose_to_arm_angles(theta) # final alpha beta in -pi < angle < pi
+        abend = self._pose_to_arm_angles(theta) # final alpha beta in -pi < angle < pi
         pstart = abend.copy()
         pstart[0] = self.theta_1
         pstart[1] = self.theta_2
-        abstart = self.pose_to_arm_angles(pstart) # initial alpha beta in -pi < angle < pi
+        abstart = self._pose_to_arm_angles(pstart) # initial alpha beta in -pi < angle < pi
         self.poses = []
         self.pos_index = 0
 #        print ('Pose Start: ',np.asarray(pstart)*180/np.pi)
@@ -588,7 +555,7 @@ class positioner(object):
         for i in range(0,51):
             abnew[0] = abstart[0] + d0 * i / 50
             abnew[1] = abstart[1] + d1 * i / 50
-            pnew = self.arm_angles_to_pose(abnew)
+            pnew = self._arm_angles_to_pose(abnew)
             self.poses.append(pnew)
         return
 
@@ -662,3 +629,40 @@ class positioner(object):
             arm_2_angle_offset = self._vis_arm_2_angle_offset
         return ([arm_1_1 - self._arm_1_angle_offset, arm_2_1 - arm_2_angle_offset],
                 [arm_1_2 - self._arm_1_angle_offset, arm_2_2 - arm_2_angle_offset])
+
+
+    def _arm_angles_to_pose(self,theta):
+        # need to wrap angles here
+        pose = theta.copy()
+        pose[1] = self._wrap_angle_pmpi(theta[1]+theta[0]+pi)
+        return pose
+
+
+    def _has_collision(self):
+        self.collision_list = []
+        for p in self.neighbours:
+            if self.collides_with(p):
+                self.collision_list.append(p)
+                return True
+        return False
+
+
+    def _pose_to_arm_angles(self,theta):
+        # need to wrap angles here
+        t = self._wrap_angle_pmpi(theta)
+        arm_angles=t.copy()
+        arm_angles[1] = self._wrap_angle_pmpi(self._wrap_angle_pmpi(t[1] - t[0]) - pi)
+        return arm_angles
+
+
+    def _wrap_angle_pmpi(self, theta):
+        # wrap an angle into -pi < theta < pi
+        return np.arctan2(np.sin(theta), np.cos(theta))
+
+
+    def _wrap_angle_ztpi(self, theta):
+        # wrap an angle into 0 < theta < 2*pi
+        angle = self._wrap_angle_pmpi(theta)
+        if angle < 0:
+            angle = abs(angle) + 2 * (np.pi - abs(angle))
+        return angle

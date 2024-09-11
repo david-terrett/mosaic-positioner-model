@@ -6,7 +6,6 @@ from math import floor
 from math import inf
 from math import pi
 from math import sqrt
-from random import random
 import matplotlib.pyplot as plt
 
 from .geometry import point
@@ -25,16 +24,24 @@ class focal_plane(object):
             List of the positioners in the focal plane
         targets : [targets]
             List of targets
+        x_max : double
+            Maximum extend of field in x
+        x_min : double
+            Minimum extend of field in x
+        y_max : double
+            Maximum extend of field in y
+        y_min : double
+            Minimum extend of field in y
     """
 
     def __init__(self):
         self._dx = 95.0 * 3.0 / 4.0
         self._dy = 95.0 * sqrt(3.0) / 2.0
         self._max_sep2 = self._dx*self._dx*4
-        self._x_max = 13.0 * self._dx
-        self._x_min = -self._x_max
-        self._y_max = 12.0 * self._dy
-        self._y_min = -self._y_max
+        self.x_max = 13.0 * self._dx
+        self.x_min = -self.x_max
+        self.y_max = 12.0 * self._dy
+        self.y_min = -self.y_max
         self._types = [3,5,2,3,5,2,3,1,0,1,2,5,3,2,5,3,2,1,1,
                        2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
                        2,3,5,2,3,5,2,3,1,5,3,2,5,3,2,5,3,0,
@@ -111,40 +118,6 @@ class focal_plane(object):
         self.axes = None
         self._target_markers = []
         self.live_view = False
-
-
-    def add_random_targets(self, density, ir=False, vis_lr=False, vis_hr=False):
-        """
-        Create random targets and add them to the positioners
-
-        Parameters
-        ---------
-        density : float
-            Density of targets to create (number per arcmin^2)
-        ir : bool
-            create IR targets
-        vis_lr : bool
-            create VIS low res targets
-        vis_hr : bool
-            create VIS high res targets
-        """
-
-        # Plate scale (mm/arcsec)
-        plate_scale = 3.316
-
-        # Area to cover (arcsec^2)
-        area = ((self._x_max - self._x_min) * (self._y_max - self._y_min) /
-                (plate_scale * plate_scale))
-
-        # Number of targets to create
-        n = int(density * area / 3600.0)
-
-        targets = []
-        for _ in range(0, n):
-            x = self._x_min + random() * (self._x_max - self._x_min)
-            y = self._y_min + random() * (self._y_max - self._y_min)
-            targets.append(target(x, y, ir=ir, vis_lr=vis_lr, vis_hr=vis_hr))
-        self.add_targets(targets)
 
 
     def add_targets(self, targets):
