@@ -182,7 +182,7 @@ class positioner(object):
     def add_target(self, t):
         """
         Add a target to the list of potential targets for this positioner
-        if it can reach
+        if it can reach and the target and positioner types are compatible
 
         Parameters
         ----------
@@ -195,11 +195,15 @@ class positioner(object):
             True if the target is reachable
         """
         reachable = False
-        if t.ir:
+        if t.ir and self.is_ir():
             if self.can_reach(t.position, True):
                 self.ir_targets[t] = self._arm_angles(t.position, True)
                 reachable = True
-        if t.vis_lr or t.vis_hr:
+        if t.vis_lr and self.is_vis_lr():
+            if self.can_reach(t.position, False):
+                self.vis_targets[t] = self._arm_angles(t.position, False)
+                reachable = True
+        if t.vis_hr and self.is_vis_hr():
             if self.can_reach(t.position, False):
                 self.vis_targets[t] = self._arm_angles(t.position, False)
                 reachable = True
@@ -296,6 +300,28 @@ class positioner(object):
         return (intersects(self.arm_1, other.arm_1) or
                 intersects(self.arm_2, other.arm_2))
 
+
+    def is_ir(self):
+        """
+        Has an IR fibre
+        """
+        return (self.type & 1) == 1
+
+
+    def is_vis_lr(self):
+        """
+        Has a low res visible fibre
+        """
+        return (self.type & 2) == 2
+
+
+    def is_vis_hr(self):
+        """
+        Has a high res visible fibre
+        """
+        return (self.type & 4) == 4
+
+
     def park(self):
         """
         Park the positioner
@@ -323,35 +349,25 @@ class positioner(object):
             patch.remove()
         self._patches = []
 
-        # Draw the arms
-        self._d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
-        self._d.append(ax.plot(self.arm_2.x(), self.arm_2.y(),
-                               color=self._colours[self.type]))
+        if self.type != 0:
 
-        # Draw the axes
-        self._d.append(ax.plot(self._axis_1_base.x(), self._axis_1_base.y(),
-                               '+', color='black', markersize=4.0))
-        self._d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
-                               color='black', markersize=4.0))
-        if self.target:
-            if (self.in_position):
-                c = 'blue'
-            else:
-                c = 'green'
-        else:
-            c = 'red'
+            # Draw the arms
+            self._d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
+            self._d.append(ax.plot(self.arm_2.x(), self.arm_2.y(),
+                                   color=self._colours[self.type]))
 
-        # Draw the fibers
-        #self.d.append(ax.plot(self.ir_fiber.x(), self.ir_fiber.y(), 'o', color='red',
-        #              markersize=4.0))
-        #self.d.append(ax.plot(self.vis_fiber.x(), self.vis_fiber.y(), 'o', color='red',
-        #              markersize=4.0))
-        self._patches.append(ax.add_patch(Ellipse(xy=(self.ir_fiber.x(), self.ir_fiber.y()),
-                                          width=5, height=5, angle=0,
-                                          facecolor="none", edgecolor='red')))
-        self._patches.append(ax.add_patch(Ellipse(xy=(self.vis_fiber.x(), self.vis_fiber.y()),
-                                          width=5, height=5, angle=0,
-                                          facecolor="none", edgecolor='red')))
+            # Draw the axes
+            self._d.append(ax.plot(self._axis_1_base.x(), self._axis_1_base.y(),
+                                   '+', color='black', markersize=4.0))
+            self._d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
+                                   color='black', markersize=4.0))
+            # Draw the fibers
+            self._patches.append(ax.add_patch(Ellipse(xy=(self.ir_fiber.x(), self.ir_fiber.y()),
+                                              width=5, height=5, angle=0,
+                                              facecolor="none", edgecolor='red')))
+            self._patches.append(ax.add_patch(Ellipse(xy=(self.vis_fiber.x(), self.vis_fiber.y()),
+                                              width=5, height=5, angle=0,
+                                              facecolor="none", edgecolor='red')))
 
 
     def directions(self, t_end):
@@ -364,6 +380,7 @@ class positioner(object):
         dt2 = t2_1 - t2_0
         print(dt1, dt2)
         return dt1, dt2
+
 
     def pose_to_arm_angles(self,theta):
         # need to wrap angles here

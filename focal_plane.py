@@ -83,14 +83,15 @@ class focal_plane(object):
         self._add_column(10, 7)
         self._add_column(-10, 7)
 
-        # Build list of neighbours for each positioner
+        # Build list of neighbours for each positioner ignoring ones that
+        # are absent
         for p in self.positioners:
             p.type = self._types[p.id]
             xp=p.position.x()
             yp=p.position.y()
             p.neighbours = []
             for q in self.positioners:
-                if not p == q:
+                if p is not q and q.type != 0:
                     dx= xp-q.position.x()
                     dy= yp-q.position.y()
                     sep2 = dx*dx+dy*dy

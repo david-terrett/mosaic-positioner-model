@@ -7,7 +7,9 @@ from positioner_model import rerun
 fp = focal_plane()
 plt.interactive(True)
 fp.live_view=True
-fp.add_random_targets(density=6.8, ir=True)
+fp.add_random_targets(density=6, ir=True)
+fp.add_random_targets(density=5, vis_lr=True)
+fp.add_random_targets(density=5, vis_hr=True)
 fp.live_view=True
 fp.simple_allocator()
 fp.park_all()
