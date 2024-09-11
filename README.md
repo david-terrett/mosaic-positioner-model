@@ -57,7 +57,7 @@ use with anaconda.
     >>> print(len(fp.targets))
 
     >>> # Run the simple allocation algorithm
-    >>> fp.simple_allocator()
+    >>> simple_allocator(fp)
 
     >>> # Print a summary of the allocations
     >>> fp.report()
@@ -76,11 +76,12 @@ use with anaconda.
     >>> with open('test.csv) as f:
     ...    fp.load_targets(f)
 
-    >>> # Get help on the focal plane model classes.
-    >>> import focal_plane
-    >>> help(focal_plane.focal_plane)
-    >>> help(focal_plane.target)
-    >>> help(focal_plane.positioner)
+    >>> # Get help on the focal plane model classes and functions.
+    >>> import positioner_model
+    >>> help(positioner_model.focal_plane)
+    >>> help(positioner_model.target)
+    >>> help(positioner_model.positioner)
+    >>> help(positioner_model.simple_allocator)
 
 # The simple allocator
 
@@ -89,10 +90,9 @@ The simple_allocator method implements the following algorithm:
 - Sort the positioners into ascending order of the number of targets
   the positioner can reach.
 
-- For each positioner not yet allocated a target, sort the targets into
-  ascending order of the number of positioners that can reach it and
-  try placing the fiber on each target in both possible configurations
-  until one that doesn't collide with another positioner is found.
+- For each positioner not yet allocated a target, try placing the fiber
+  on each target in both possible configurations until one that doesn't
+  collide with another positioner is found.
 
 - Repeat step 2 until no more targets can be assigned
 

@@ -358,48 +358,6 @@ class focal_plane(object):
                     self._try_swap(pos, True)
 
 
-    def simple_allocator(self, live_view=False):
-        """
-        Simple target to positioner assignment algorithm
-        """
-        self.live_view = live_view
-        self.clear_target_assignments()
-
-        # sort the list of positioners so that we allocate the ones
-        # with the fewest targets first
-        positioners = sorted(self.positioners,
-                             key=lambda p: len(p.ir_targets) + len(p.vis_targets))
-
-        # Until there are no unallocated positioners left...
-        alloc = self.ir_allocated + self.vis_allocated
-        while self.ir_allocated + self.vis_allocated < len(self.positioners):
-            for pos in positioners:
-
-                # If this positioner doesn't have a target
-                if not pos.target:
-
-                    # Try to assign an IR target
-                    for t in [*pos.ir_targets]:
-                        if not t.positioner:
-                            if self._assign_target_to_positioner(pos, t, True):
-                                break
-
-                    # If still no target then try for a visible one
-                    if not pos.target:
-                        for t in [*pos.vis_targets]:
-                            if not t.positioner:
-                                if self._assign_target_to_positioner(pos, t, False):
-                                    break
-
-            # If that pass didn't find any more, give up.
-            if alloc == self.ir_allocated + self.vis_allocated:
-                break
-            alloc = self.ir_allocated + self.vis_allocated
-
-        # Turn off live view at the end anyway, to keep everything tidy
-        self.live_view = False
-
-
     def _assign_target_to_positioner(self, pos, t, ir):
         """
         Try assigning a target to positioner. If we can't find a target that

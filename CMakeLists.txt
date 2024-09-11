@@ -16,6 +16,7 @@ install(FILES
     positioner.py
     rerun.py
     resolve_conflict.py
+    simple_allocator.py
     target.py
     DESTINATION positioner_model
 )
