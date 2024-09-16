@@ -1,6 +1,7 @@
 set(CMAKE_CXX_STANDARD 14)
 add_compile_options(-Wall -Wextra)
 add_compile_options(-Wno-cast-function-type)
+add_compile_options(-Wno-missing-field-initializers)
 if(APPLE)
     add_compile_options(-Wno-deprecated-declarations)
 endif()
