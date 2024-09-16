@@ -16,7 +16,11 @@ boost binary libraries.
 
 To make a local copy of the repository for the first time
 
-    $ git clone git@github.com:david-terrett/mosaic-positioner-model.git positioner_model
+    $ git clone github.com:david-terrett/mosaic-positioner-model.git positioner_model
+
+or, if you don't have a github account
+
+    $ git clone https://github.com/david-terrett/mosaic-positioner-model.git positioner_model
 
 This will create a directory positioner_model containing the source code.
 
@@ -39,7 +43,7 @@ also have to define BOOST_DIR, BOOST_INCLUDEDIR and/or Python_ROOT_DIR.
 # Issue with anaconda
 
 The supplied cmake file does not build the geometry library correctly for
-use with anaconda.
+use with anaconda on some systems (e.g. MACOS).
 
 # Example
 
@@ -98,10 +102,13 @@ The simple_allocator method implements the following algorithm:
 
 # Contributing updates
 
-If you fix any bugs or make enhancements that you want merged into the model,
-please follow the following procedure.
+If you fix any bugs or make enhancements that you want merged into the model
+you must have a github account and ask david.terrett@ntlworld.com to add you
+to the project as a collaborator.
 
-If you are new to git, set your name and email address
+The procedure for contributing and update is:
+
+Set your name and email address if they are not already set.
 
     $ git config --global user.name "John Doe"
     $ git config --global user.email johndoe@example.com
