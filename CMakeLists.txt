@@ -12,6 +12,7 @@ add_subdirectory(geometry)
 install(FILES
     __init__.py
     add_random_targets.py
+    demo_allocator.py
     focal_plane.py
     geometry_utilities.py
     positioner.py

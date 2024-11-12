@@ -3,6 +3,7 @@ from math import acos
 from math import atan2
 from math import cos
 from math import fabs
+from math import radians
 from math import pi
 from math import sin
 import numpy as np
@@ -38,25 +39,23 @@ class positioner(object):
         The maximum reach of the positioner with the IR fibre
     ir_min_r : float
         The minimum reach of the positioner with the IR fibre
-    ir_targets : dict
-        A dictionary of reachable IR targets indexed by target
     neighbours : list
         A list of neighbouring positioners
+    targets : dict
+        A dictionary of reachable targets indexed by target
+        Angle of lower arm relative to x axis (radians)
+    theta_2 : float
+        Angle of lower arm relative to x axis (radians)
     type : int
         type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
         5: NIR+VIS-HR, 8: Camera (i.e. a bit mask)
     theta_1 : float
-        Angle of lower arm relative to x axis (radians)
-    theta_2 : float
-        Angle of lower arm relative to x axis (radians)
     vis_fiber : point
         location of VIS fiber in focal plane
     vis_max_r : float
         The maximum reach of the positioner with the VIS fibre
     vis_min_r : float
         The minimum reach of the positioner with the VIS fibre
-    vis_targets : dict
-        A dictionary of reachable VIS targets indexed by target
     """
 
 
@@ -76,8 +75,7 @@ class positioner(object):
         self.position = position
         self.id = ident
         self.type = type
-        self.ir_targets = {}
-        self.vis_targets = {}
+        self.targets = {}
         self.target = None
         self.neighbours = []
         self._d = []
@@ -197,22 +195,22 @@ class positioner(object):
         reachable = False
         if t.ir and self.is_ir():
             if self.can_reach(t.position, True):
-                self.ir_targets[t] = self._arm_angles(t.position, True)
+                self.targets[t] = self._arm_angles(t.position, True)
                 reachable = True
         if t.vis_lr and self.is_vis_lr():
             if self.can_reach(t.position, False):
-                self.vis_targets[t] = self._arm_angles(t.position, False)
+                self.targets[t] = self._arm_angles(t.position, False)
                 reachable = True
         if t.vis_hr and self.is_vis_hr():
             if self.can_reach(t.position, False):
-                self.vis_targets[t] = self._arm_angles(t.position, False)
+                self.targets[t] = self._arm_angles(t.position, False)
                 reachable = True
         if reachable:
             t.reachable.append(self)
         return reachable
 
 
-    def assign_target(self, t, ir=True, alt=False):
+    def assign_target(self, t, alt=False):
         """
         Assign a target to the positioner
 
@@ -220,8 +218,6 @@ class positioner(object):
         ----------
         t : target
             target to assign
-        ir : bool
-            use IR fiber
         alt : bool
             Use alternate arm position
         """
@@ -230,16 +226,10 @@ class positioner(object):
         if self.target:
             self.target.positioner = None
         if t:
-            if ir:
-                if not alt:
-                    self.tpose = self.ir_targets[t][0]
-                else:
-                    self.tpose = self.ir_targets[t][1]
+            if not alt:
+                self.tpose = self.targets[t][0]
             else:
-                if not alt:
-                    self.tpose = self.vis_targets[t][0]
-                else:
-                    self.tpose = self.vis_targets[t][1]
+                self.tpose = self.targets[t][1]
             self.pose(self.tpose)
 
             # Assign the positioner to the target
@@ -247,6 +237,7 @@ class positioner(object):
 
         # Assign the target to the postioner
         self.target = t
+        self.alt = alt
 
 
     def can_reach(self, p, ir):
@@ -278,8 +269,7 @@ class positioner(object):
         Clear the list of reachable targets
         """
         self.assign_target(None)
-        self.ir_targets = {}
-        self.vis_targets = {}
+        self.targets = {}
 
 
     def collides_with(self, other):
@@ -299,6 +289,13 @@ class positioner(object):
             return False
         return (intersects(self.arm_1, other.arm_1) or
                 intersects(self.arm_2, other.arm_2))
+
+
+    def build_collision_matrix(self, matrix):
+        self._build_collision_array(matrix, 0, 0)
+        self._build_collision_array(matrix, 1, 0)
+        self._build_collision_array(matrix, 0, 1)
+        self._build_collision_array(matrix, 1, 1)
 
 
     def is_ir(self):
@@ -560,11 +557,6 @@ class positioner(object):
         return
 
 
-    def set_next_pose(self, i):
-        self.pose(self.poses[i])
-        return
-
-
     def pose(self, theta):
         """
         Set the axis positions
@@ -597,6 +589,37 @@ class positioner(object):
         self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
         self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
         self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
+
+
+    def set_next_pose(self, i):
+        self.pose(self.poses[i])
+        return
+
+
+    def uncollide(self, step=10.0):
+        """
+        Moves the positioner to somewhere that doesn't collide with any of its
+        neighbours.
+
+        Parameters
+        ----------
+        step : double
+            Step size (degrees)
+        """
+        a_start = self.tpose[0]
+        a_end = a_start + 2.0 * pi
+        b_start = self.tpose[1]
+        b_end = b_start + 2.0 * pi
+        a = a_start
+        while a < a_end:
+            b = b_start
+            while b < b_end:
+                self.pose([a, b])
+                if not self._has_collision():
+                    return
+                b += radians(step)
+            a += radians(step)
+        raise RuntimeError("no position found without a collision")
 
 
     def _arm_angles(self, p, ir):
@@ -636,6 +659,31 @@ class positioner(object):
         pose = theta.copy()
         pose[1] = self._wrap_angle_pmpi(theta[1]+theta[0]+pi)
         return pose
+
+
+    def _build_collision_array(self, matrix, alt1, alt2):
+        """
+        Build the collision matrix for this positioner
+        """
+        # Save our current pose
+        my_pose = [self.theta_1, self.theta_2]
+
+        # For each neighbour
+        np = 0
+        for p in self.neighbours:
+            other_pose = [p.theta_1, p.theta_2]
+            n1 = 0
+            for t1 in self.targets:
+                self.pose(self.targets[t1][alt1])
+                n2 = 0
+                for t2 in p.targets:
+                    p.pose(p.targets[t2][alt2])
+                    matrix[self.id, n1, alt1, np, n2, alt2] = self.collides_with(p)
+                    n2 += 1
+                n1 += 1
+            p.pose(other_pose)
+            np += 1
+        self.pose(my_pose)
 
 
     def _has_collision(self):

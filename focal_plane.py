@@ -7,6 +7,7 @@ from math import inf
 from math import pi
 from math import sqrt
 import matplotlib.pyplot as plt
+import numpy as np
 
 from .geometry import point
 from .positioner import positioner
@@ -119,6 +120,8 @@ class focal_plane(object):
         self._target_markers = []
         self.live_view = False
 
+        # No collision matrix either
+        self.collision_matrix = None
 
     def add_targets(self, targets):
         """
@@ -142,6 +145,87 @@ class focal_plane(object):
         if self.figure:
             self._plot_targets()
 
+        # The collision matris is now invalid
+        self_collision_matrix = None
+
+
+    def build_collision_matrix(self):
+
+    # We need to know the maximum number of neighbours that a positioner
+    # can have
+        max_neighbours = 0
+        for p in self.positioners:
+            if len(p.neighbours) > max_neighbours:
+                max_neighbours = len(p.neighbours)
+
+    # And the maximum number of targets that any positioner can reach
+        max_targets = 0
+        for p in self.positioners:
+            if len(p.targets) > max_targets:
+                max_targets = len(p.targets)
+
+        # Give every target an id
+        id = 0
+        for t in self.targets:
+            t.id = id
+            id += 1
+
+        try:
+
+            # Create the collision matrix. The collision matrix is indexed by:
+            #
+            #  positioner id
+            #  target index in the positioner's reachable targets array
+            #  pose of the positioner (0 or 1)
+            #  index of the other positioner in the neighbours array of the positioner
+            #  target index in the other positioner's reachable targets array
+            #  pose of the other positioner (0 or 1)
+            #
+            # and contains whether or not the positioners will collide
+            self.collision_matrix = np.full((len(self.positioners), max_targets,
+                                             2, max_neighbours, max_targets, 2),
+                                            False)
+
+            # Create the array that lists a positioners neighbours. Indexed by positioner id
+            # and containing positioner id's
+            self.neighbours_array = np.full((len(self.positioners), max_neighbours),
+                                             -1)
+
+            # Create the targets array that stores which target is allocated to each
+            # positioner and which pose
+            self.pos_to_targ_array = np.full((len(self.positioners), 2), -1)
+
+            # Create the array that stores which positioner each target is assigned to
+            self.targ_to_pos_array = np.full((len(self.targets)), -1)
+
+            # Create the reachable targets array. This is indexed by positioner id and target
+            # order in the positioner's reachable targets array. It contains target id's
+            self.reachable_targets = np.full((len(self.positioners), max_targets), -1)
+
+            # Populate the collision matrix
+            for p in self.positioners:
+                p.build_collision_matrix(self.collision_matrix)
+
+            # Fill out the neighbours array
+            for p in self.positioners:
+                ni = 0
+                for n in p.neighbours:
+                    self.neighbours_array[p.id, ni] = n.id
+                    ni += 1
+
+            # Set the reachable targets array
+            for p in self.positioners:
+                n = 0
+                for t in p.targets:
+                    self.reachable_targets[p.id, n] = t.id
+                    n +=1
+
+        except BaseException as e:
+            self.collision_matrix = None
+            self.neighbours_array = None
+            self.targets_array = None
+            self.reachable_targets = None
+            raise e
 
     def check(self):
         """
@@ -149,13 +233,19 @@ class focal_plane(object):
 
         Returns
         -------
-        : bool
-            True if there are no collisions
+        : list
+            A list of pairs of colliding positioners or None if there
+            are no collisions
         """
-        for p in self.positioners:
-            if self._has_collision(p):
-                return False
-        return True
+        collisions = []
+        for p1 in self.positioners:
+            for p2 in p1.neighbours:
+                if p1.collides_with(p2):
+                    collisions.append([p1, p2])
+        if len(collisions) > 0:
+            return collisions
+        else:
+            return None
 
 
     def clear_targets(self):
@@ -171,9 +261,11 @@ class focal_plane(object):
         self.ir_allocated = 0
         self.vis_allocated = 0
         self.positioned = 0
+        self.collision_matrix = None
 
 
-    def clear_target_assignments(self):
+
+    def clear_all_target_assignments(self):
         """
         Clear the target assignments for all positioners
         """
@@ -182,6 +274,19 @@ class focal_plane(object):
         self.ir_allocated = 0
         self.vis_allocated = 0
         self.positioned = 0
+
+
+    def clear_target_assignment(self, pos):
+        """
+        Clear the target assignment for a positioner
+        """
+        if pos.target:
+            if pos.target.ir:
+                self.ir_allocated -= 1
+            else:
+                self.vis_allocated -= 1
+
+        pos.assign_target(None)
 
 
     def load_targets(self, csvfile):
@@ -201,6 +306,9 @@ class focal_plane(object):
                                   vis_lr=literal_eval(row['VIS_LR']),
                                   vis_hr=literal_eval(row['VIS_HR'])))
         self.add_targets(targets)
+
+        # The collision matris is now invalid
+        self.collision_matrix = None
 
 
     def park_all(self):
@@ -269,9 +377,9 @@ class focal_plane(object):
         unreachable = 0
         one_target = 0
         for p in self.positioners:
-            if len(p.ir_targets) + len(p.vis_targets) == 0:
+            if len(p.targets) == 0:
                 unreachable += 1
-            elif len(p.ir_targets) + len(p.vis_targets) == 1:
+            elif len(p.targets) == 1:
                 one_target += 1
         if unreachable > 0:
             print(f"of these {unreachable} can't reach any targets")
@@ -298,6 +406,17 @@ class focal_plane(object):
             writer.writerow({'X': t.position.x(), 'Y': t.position.y(),
                              'IR': t.ir, 'VIS_LR': t.vis_lr,
                              'VIS_HR': t.vis_hr})
+
+
+    def will_collide(self, p1, t1, alt1):
+        for p2 in range(len(self.neighbours_array[p1])):
+            t2 = self.pos_to_targ_array[self.neighbours_array[p1, p2]][0]
+            alt2 = self.pos_to_targ_array[self.neighbours_array[p1, p2]][1]
+            #print(p1, t1, alt1, p2, t2, alt2)
+            if t2 != -1:
+                if self.collision_matrix[p1, t1, alt1, p2, t2, alt2]:
+                    return True
+        return False
 
 
     def _add_column(self, x, n):
@@ -331,23 +450,26 @@ class focal_plane(object):
                     self._try_swap(pos, True)
 
 
-    def _assign_target_to_positioner(self, pos, t, ir):
+    def assign_target_to_positioner(self, pos, t, alt, collision_check=True):
         """
         Try assigning a target to positioner. If we can't find a target that
-        doesn't cause a collision with another positioner, put the positioner
-        back to where it was.
+        doesn't cause a collision with another positioner that already has a
+        target assigned, put the positioner back to where it was.
         """
         current_theta_1 = pos.theta_1
         current_theta_2 = pos.theta_2
         current_target = pos.target
-        pos.assign_target(t, ir, False)
-        if self._has_collision(pos):
-            pos.assign_target(t, ir, True)
-            if self._has_collision(pos):
-                pos.assign_target(current_target)
-                pos.pose([current_theta_1, current_theta_2])
-                return False
-        if ir:
+        pos.assign_target(t, alt)
+        if collision_check and self._has_collision(pos):
+            pos.assign_target(current_target, False)
+            pos.pose([current_theta_1, current_theta_2])
+            return False
+        if current_target is not None:
+            if current_target.ir:
+                self.ir_allocated -= 1
+            else:
+                self.vis_allocated -= 1
+        if t.ir:
             self.ir_allocated += 1
         else:
             self.vis_allocated += 1
@@ -469,7 +591,7 @@ class focal_plane(object):
             for i in range (0,len(pos.poses)):
                 if _safe:
                     pos.pose(pos.poses[-(i+1)])
-                    if self._has_collision(pos):
+                    if self._has_collision(pos, assinged_only=True):
                         _safe = False
                         pos.pose([current_theta_1,current_theta_2])
                     pos.plot(self.axes)
@@ -499,12 +621,13 @@ class focal_plane(object):
         return
 
 
-    def _has_collision(self, pos):
+    def _has_collision(self, pos, assigned_only=False):
         pos.collision_list = []
         for p in pos.neighbours:
-            if p.collides_with(pos):
-                pos.collision_list.append(p)
-                return True
+            if not assigned_only or p.target:
+                if p.collides_with(pos):
+                    pos.collision_list.append(p)
+                    return True
         return False
 
 
@@ -561,7 +684,10 @@ class focal_plane(object):
                 # We have found a target for this positioner so now look
                 # for one for the positioner we are trying swapping with
                 for t2 in other_pos.targets:
-                    if self._assign_target_to_positioner(other_pos, t2):
+                    if self.assign_target_to_positioner(other_pos, t2, False):
+                        this_pos.assign_target(t1)
+                        return True
+                    if self.assign_target_to_positioner(other_pos, t2, True):
                         this_pos.assign_target(t1)
                         return True
 
