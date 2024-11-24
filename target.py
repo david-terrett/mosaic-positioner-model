@@ -10,6 +10,9 @@ class target(object):
 
     Attributes
     ----------
+        ir : bool
+            Target is an IR target
+
         position : point
             Position of target in the focal plane
 
@@ -18,6 +21,12 @@ class target(object):
 
         reachable : [positioner]
             A list of the positioners that can reach this target
+
+        vis_hr : bool
+            Target is a high resolution visible target
+
+        vis_lr : bool
+            Target is a low resolution visible target
     """
 
     def __init__(self, x, y, ir=False, vis_lr=False, vis_hr=False):

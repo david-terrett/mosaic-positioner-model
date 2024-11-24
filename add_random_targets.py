@@ -5,7 +5,7 @@ from .target import target
 
 def add_random_targets(fp, density, ir=False, vis_lr=False, vis_hr=False):
     """
-    Create random targets and add them to the positioners
+    Create targets in random positioners and add them to the focal plane
 
     Parameters
     ---------

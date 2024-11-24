@@ -256,12 +256,16 @@ class positioner(object):
         : bool
             True if the fiber can be positioned at the specified point
         """
-        r2 = ((p.x() - self._axis_1_base.x()) * (p.x() - self._axis_1_base.x()) +
-              (p.y() - self._axis_1_base.y()) * (p.y() - self._axis_1_base.y()))
+        r2 = ((p.x() - self._axis_1_base.x()) *
+              (p.x() - self._axis_1_base.x()) +
+              (p.y() - self._axis_1_base.y()) *
+              (p.y() - self._axis_1_base.y()))
         if ir:
-            return r2 < self.ir_max_r * self.ir_max_r and r2 > self.ir_min_r * self.ir_min_r
+            return (r2 < self.ir_max_r * self.ir_max_r and
+                    r2 > self.ir_min_r * self.ir_min_r)
         else:
-            return r2 < self.vis_max_r * self.vis_max_r and r2 > self.vis_min_r * self.vis_min_r
+            return (r2 < self.vis_max_r * self.vis_max_r and
+                    r2 > self.vis_min_r * self.vis_min_r)
 
 
     def clear_targets(self):
@@ -301,6 +305,11 @@ class positioner(object):
     def is_ir(self):
         """
         Has an IR fibre
+
+        Returns
+        -------
+        : bool
+            True if the positioner has an IR fibre
         """
         return (self.type & 1) == 1
 
@@ -308,6 +317,11 @@ class positioner(object):
     def is_vis_lr(self):
         """
         Has a low res visible fibre
+
+        Returns
+        -------
+        : bool
+            True if the positioner has a low res visible fibre
         """
         return (self.type & 2) == 2
 
@@ -315,6 +329,11 @@ class positioner(object):
     def is_vis_hr(self):
         """
         Has a high res visible fibre
+
+        Returns
+        -------
+        : bool
+            True if the positioner has a high res visible fibre
         """
         return (self.type & 4) == 4
 
@@ -322,6 +341,8 @@ class positioner(object):
     def park(self):
         """
         Park the positioner
+
+        The positioner is moved to angle zero in both axes.
         """
         self.pose([0, pi])
         self.poses = [[0, pi]]
@@ -359,12 +380,16 @@ class positioner(object):
             self._d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
                                    color='black', markersize=4.0))
             # Draw the fibers
-            self._patches.append(ax.add_patch(Ellipse(xy=(self.ir_fiber.x(), self.ir_fiber.y()),
+            self._patches.append(ax.add_patch(Ellipse(xy=(self.ir_fiber.x(),
+                                                          self.ir_fiber.y()),
                                               width=5, height=5, angle=0,
-                                              facecolor="none", edgecolor='red')))
-            self._patches.append(ax.add_patch(Ellipse(xy=(self.vis_fiber.x(), self.vis_fiber.y()),
+                                              facecolor="none",
+                                              edgecolor='red')))
+            self._patches.append(ax.add_patch(Ellipse(xy=(self.vis_fiber.x(),
+                                                          self.vis_fiber.y()),
                                               width=5, height=5, angle=0,
-                                              facecolor="none", edgecolor='red')))
+                                              facecolor="none",
+                                              edgecolor='red')))
 
 
     def directions(self, t_end):
