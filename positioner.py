@@ -631,9 +631,9 @@ class positioner(object):
         step : double
             Step size (degrees)
         """
-        a_start = self.tpose[0]
+        a_start = self.theta_1
         a_end = a_start + 2.0 * pi
-        b_start = self.tpose[1]
+        b_start = self.theta_2
         b_end = b_start + 2.0 * pi
         a = a_start
         while a < a_end:
@@ -718,6 +718,7 @@ class positioner(object):
                 self.collision_list.append(p)
                 return True
         return False
+
 
 
     def _pose_to_arm_angles(self,theta):

@@ -98,13 +98,14 @@ class focal_plane(object):
             xp=p.position.x()
             yp=p.position.y()
             p.neighbours = []
-            for q in self.positioners:
-                if p is not q and q.type != 0:
-                    dx= xp-q.position.x()
-                    dy= yp-q.position.y()
-                    sep2 = dx*dx+dy*dy
-                    if sep2 <= self._max_sep2:
-                        p.neighbours.append(q)
+            if p.type != 0:
+                for q in self.positioners:
+                    if p is not q and q.type != 0:
+                        dx= xp-q.position.x()
+                        dy= yp-q.position.y()
+                        sep2 = dx*dx+dy*dy
+                        if sep2 <= self._max_sep2:
+                            p.neighbours.append(q)
 
         # No targets allocated
         self.ir_allocated = 0
