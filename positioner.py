@@ -44,7 +44,7 @@ class positioner(object):
         A list of neighbouring positioners
     type : int
         type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
-        5: NIR+VIS-HR, 8: Camera (i.e. a bit mask)
+        6: VIS+VIS-HR, 8: Camera (i.e. a bit mask)
     theta_1 : float
         Angle of lower arm relative to x axis (radians)
     theta_2 : float
@@ -82,7 +82,7 @@ class positioner(object):
         self.neighbours = []
         self._d = []
         self._patches = []
-        self._colours={0:'w',1:'r',2:'b',3:'m',5:'g',8:'c'}
+        self._colours={0:'w',1:'r',2:'b',3:'m',6:'g',8:'c'}
 
         # Define the rotation axis of arm 1 for a positioner placed at 0,0
         axis_1 = point(0.0, 0.0)
@@ -420,14 +420,14 @@ class positioner(object):
             self.pose_index = _spi
 
 
-    def move_to_position(self, figure, axes):
+    def move_to_position(self, figure, axes, move_parked=False):
         """
         move through the calculated poses to get to destination, check for
         collisions at each step and report collisions.
         """
         if self.in_position:
             return True
-        if not self.target:
+        if not move_parked and not self.target:
             return True
         start_pose = [self.theta_1,self.theta_2]
         if figure:
@@ -533,10 +533,10 @@ class positioner(object):
         return _safe
 
 
-
     def trajectory_from_here_simultaneous(self, theta):
         """
         Move both arms in 50 steps together
+        if positioner is deployed and theta is theta_park this should park
         """
         abend = self._pose_to_arm_angles(theta) # final alpha beta in -pi < angle < pi
         pstart = abend.copy()
@@ -641,9 +641,10 @@ class positioner(object):
     def _has_collision(self):
         self.collision_list = []
         for p in self.neighbours:
-            if self.collides_with(p):
-                self.collision_list.append(p)
-                return True
+            if p.type != 0:
+                if self.collides_with(p):
+                    self.collision_list.append(p)
+                    return True
         return False
 
 
