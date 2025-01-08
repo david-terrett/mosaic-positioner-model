@@ -2,6 +2,7 @@
 from math import acos
 from math import atan2
 from math import cos
+from math import degrees
 from math import fabs
 from math import radians
 from math import pi
@@ -19,18 +20,24 @@ from .geometry_utilities import move_polygon
 from .geometry_utilities import rotate_point
 from .geometry_utilities import rotate_polygon
 
+from .motor import motor
+
 class positioner(object):
     """
     Model of a MOSAIC fiber positioner
 
     Attributes
     ----------
+    alpha_motor : motor
+        alpha axis motor
     arm_1 : polygon
         outline of the lower arm
     arm_2 : polygon
         outline of the upper arm
     axis_2 : point
         position of second axis in focal plane
+    beta_motor : motor
+        beta axis motor
     id : any
         an identifier for the positioner
     ir_fiber : point
@@ -72,6 +79,8 @@ class positioner(object):
         type : int
             the type of positioner
         """
+        self.alpha_motor = motor()
+        self.beta_motor = motor()
         self.position = position
         self.id = ident
         self.type = type
@@ -302,6 +311,18 @@ class positioner(object):
         self._build_collision_array(matrix, 1, 1)
 
 
+    def directions(self, t_end):
+        t1_0 = self.theta_1
+        t1_1 = t_end[0]
+        # Assume all angles in the range -pi < t < pi
+        dt1 = t1_1 - t1_0
+        t2_0 = self.theta_2+dt1
+        t2_1 = t_end[1]
+        dt2 = t2_1 - t2_0
+        print(dt1, dt2)
+        return dt1, dt2
+
+
     def is_ir(self):
         """
         Has an IR fibre
@@ -392,56 +413,6 @@ class positioner(object):
                                               edgecolor='red')))
 
 
-    def directions(self, t_end):
-        t1_0 = self.theta_1
-        t1_1 = t_end[0]
-        # Assume all angles in the range -pi < t < pi
-        dt1 = t1_1 - t1_0
-        t2_0 = self.theta_2+dt1
-        t2_1 = t_end[1]
-        dt2 = t2_1 - t2_0
-        print(dt1, dt2)
-        return dt1, dt2
-
-    def zoom_to(self, figure, winsize=240):
-        xmin = self._axis_1_base.x() - winsize/2
-        xmax = self._axis_1_base.x() + winsize/2
-        ymin = self._axis_1_base.y() - winsize/2
-        ymax = self._axis_1_base.y() + winsize/2
-        if figure:
-            figure.gca().axis([xmin,xmax,ymin,ymax])
-            plt.draw()
-            plt.pause(0.002)
-        return
-
-    def step_one_pose(self,figure,axes,forward=True):
-        '''
-        Probably need to return more than one flag here
-        '''
-        if not self.poses:
-            return True  # no moves defined, so we are 'in position'
-        if forward and self.in_position:
-            return True # nowhere to go
-        if (not forward and self.pos_index == 0):
-            return True # nowhere to go
-        _spi = self.pose_index
-        if forward:
-            self.pose_index = self.pose_index + 1
-        else:
-            self.pose_index = self.pose_index - 1
-        _safe = True
-        self.pose(self.poses[self.pose_index])
-        _safe = not self._has_collision() # did we hit anything?
-        if figure:
-            self.zoom_to(figure)
-            self.plot(axes)
-            plt.draw()
-            plt.pause(0.001)
-        if not _safe:
-            print(self.id, ': Blocked by ', self.collision_list[0].id)
-            self.pose_index = _spi
-
-
     def move_to_position(self, figure, axes, move_parked=False):
         """
         move through the calculated poses to get to destination, check for
@@ -474,6 +445,7 @@ class positioner(object):
             plt.draw()
             plt.pause(0.001)
         return self.in_position
+
 
     def move_to_pose(self, figure, axes, pose=None):
         """
@@ -519,6 +491,41 @@ class positioner(object):
             plt.pause(0.001)
         return _safe
 
+
+    def pose(self, theta):
+        """
+        Set the axis positions
+
+        Parameters
+        ----------
+        theta : list[float]
+            Axis angles (radians)
+        """
+        self.theta_1 = theta[0]
+        self.theta_2 = theta[1]
+
+        # Rotate arm 1
+        c = cos(theta[0] - self._theta_1_base)
+        s = sin(theta[0] - self._theta_1_base)
+        self.arm_1 = rotate_polygon(self._arm_1_base, self._axis_1_base, c, s)
+        self.axis_2 = rotate_point(self._axis_2_base, self._axis_1_base, c, s)
+
+        # Move arm 2 to the new axis 2 position.
+        arm_2 = move_polygon(self._arm_2_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
+        ir_fiber = move_point(self._ir_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
+        vis_fiber = move_point(self._vis_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
+
+        # Rotate arm 2
+        c = cos(theta[1] - self._theta_2_base)
+        s = sin(theta[1] - self._theta_2_base)
+        self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
+        self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
+        self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
+
+
     def reverse_last_move(self, figure, axes):
         """
         Try to reverse the last move we made, assuming the poses are
@@ -555,6 +562,48 @@ class positioner(object):
         return _safe
 
 
+    def step_one_pose(self,figure,axes,forward=True):
+        '''
+        Probably need to return more than one flag here
+        '''
+        if not self.poses:
+            return True  # no moves defined, so we are 'in position'
+        if forward and self.in_position:
+            return True # nowhere to go
+        if (not forward and self.pos_index == 0):
+            return True # nowhere to go
+        _spi = self.pose_index
+        if forward:
+            self.pose_index = self.pose_index + 1
+        else:
+            self.pose_index = self.pose_index - 1
+        _safe = True
+        self.pose(self.poses[self.pose_index])
+        _safe = not self._has_collision() # did we hit anything?
+        if figure:
+            self.zoom_to(figure)
+            self.plot(axes)
+            plt.draw()
+            plt.pause(0.001)
+        if not _safe:
+            print(self.id, ': Blocked by ', self.collision_list[0].id)
+            self.pose_index = _spi
+
+
+    def set_pose_from_motors(self):
+        """
+        Set the pose from the current motor positions
+        """
+        t0 = radians(self.alpha_motor.p)
+        t1 = t0 + radians(180 + self.beta_motor.p)
+        self.pose([t0, t1])
+
+
+    def set_next_pose(self, i):
+        self.pose(self.poses[i])
+        return
+
+
     def trajectory_from_here_simultaneous(self, theta):
         """
         Move both arms in 50 steps together
@@ -582,45 +631,6 @@ class positioner(object):
         return
 
 
-    def pose(self, theta):
-        """
-        Set the axis positions
-
-        Parameters
-        ----------
-        theta : list[float]
-            Axis angles (radians)
-        """
-        self.theta_1 = theta[0]
-        self.theta_2 = theta[1]
-
-        # Rotate arm 1
-        c = cos(theta[0] - self._theta_1_base)
-        s = sin(theta[0] - self._theta_1_base)
-        self.arm_1 = rotate_polygon(self._arm_1_base, self._axis_1_base, c, s)
-        self.axis_2 = rotate_point(self._axis_2_base, self._axis_1_base, c, s)
-
-        # Move arm 2 to the new axis 2 position.
-        arm_2 = move_polygon(self._arm_2_base, self.axis_2.x() - self._axis_2_base.x(),
-                             self.axis_2.y() - self._axis_2_base.y())
-        ir_fiber = move_point(self._ir_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
-                             self.axis_2.y() - self._axis_2_base.y())
-        vis_fiber = move_point(self._vis_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
-                             self.axis_2.y() - self._axis_2_base.y())
-
-        # Rotate arm 2
-        c = cos(theta[1] - self._theta_2_base)
-        s = sin(theta[1] - self._theta_2_base)
-        self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
-        self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
-        self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
-
-
-    def set_next_pose(self, i):
-        self.pose(self.poses[i])
-        return
-
-
     def uncollide(self, step=10.0):
         """
         Moves the positioner to somewhere that doesn't collide with any of its
@@ -645,6 +655,18 @@ class positioner(object):
                 b += radians(step)
             a += radians(step)
         raise RuntimeError("no position found without a collision")
+
+
+    def zoom_to(self, figure, winsize=240):
+        xmin = self._axis_1_base.x() - winsize/2
+        xmax = self._axis_1_base.x() + winsize/2
+        ymin = self._axis_1_base.y() - winsize/2
+        ymax = self._axis_1_base.y() + winsize/2
+        if figure:
+            figure.gca().axis([xmin,xmax,ymin,ymax])
+            plt.draw()
+            plt.pause(0.002)
+        return
 
 
     def _arm_angles(self, p, ir):

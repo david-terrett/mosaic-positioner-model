@@ -15,6 +15,7 @@ install(FILES
     demo_allocator.py
     focal_plane.py
     geometry_utilities.py
+    motor.py
     positioner.py
     rerun.py
     resolve_conflict.py
