@@ -10,7 +10,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .geometry import point
+from .motor import step_all
 from .positioner import positioner
+from .positioner import pose
 from .target import target
 
 class focal_plane(object):
@@ -138,14 +140,14 @@ class focal_plane(object):
         # are absent
         for p in self.positioners:
             p.type = self._types[p.id]
-            xp=p.position.x()
-            yp=p.position.y()
+            xp = p.origin.x()
+            yp = p.origin.y()
             p.neighbours = []
             if p.type != 0:
                 for q in self.positioners:
                     if p is not q and q.type != 0:
-                        dx= xp-q.position.x()
-                        dy= yp-q.position.y()
+                        dx = xp - q.origin.x()
+                        dy = yp - q.origin.y()
                         sep2 = dx*dx+dy*dy
                         if sep2 <= self._max_sep2:
                             p.neighbours.append(q)
@@ -308,7 +310,6 @@ class focal_plane(object):
         self.collision_matrix = None
 
 
-
     def clear_all_target_assignments(self):
         """
         Clear the target assignments for all positioners
@@ -417,20 +418,26 @@ class focal_plane(object):
         print(f"{self.ir_allocated} IR targets assigned to a positioner")
         print(f"{self.vis_allocated} VIS targets assigned to a positioner")
         unalloc = len(self.positioners) - self.ir_allocated - self.vis_allocated
-        print(f"{unalloc} positioners out of {len(self.positioners)} don't have a target allocated")
         unreachable = 0
         one_target = 0
+        in_position = 0
+        positioners = 0
         for p in self.positioners:
-            if len(p.targets) == 0:
-                unreachable += 1
-            elif len(p.targets) == 1:
-                one_target += 1
+            if p.type != 0:
+                positioners += 1
+                if len(p.targets) == 0:
+                    unreachable += 1
+                elif len(p.targets) == 1:
+                    one_target += 1
+                if p.in_position:
+                    in_position += 1
+        print(f"{unalloc} positioners out of {positioners} don't have a target allocated")
         if unreachable > 0:
             print(f"of these {unreachable} can't reach any targets")
         else:
             print("all positioners can reach at least one target")
         print(f"and {one_target} can reach only one target")
-        print(f"{self.positioned} positioners can be moved to their target positions without collisions")
+        print(f"{in_position} positioners can be moved to their target positions without collisions")
 
 
     def save_targets(self, csvfile):
@@ -506,7 +513,7 @@ class focal_plane(object):
         pos.assign_target(t, alt)
         if collision_check and self._has_collision(pos):
             pos.assign_target(current_target, False)
-            pos.pose([current_theta_1, current_theta_2])
+            pos.set_pose(pose(current_theta_1, current_theta_2))
             return False
         if current_target is not None:
             if current_target.ir:
@@ -520,13 +527,15 @@ class focal_plane(object):
         pos.in_position = False # Assigned a target, but haven't got there yet
         if True: # (self.live_view):
             # set up the move sequence
-            _tdest = [pos.theta_1,pos.theta_2]
+            _tdest = pose(pos.theta_1, pos.theta_2)
             #_tpos = pos.fiber
-            pos.pose([current_theta_1,current_theta_2]) # set it back to park for a second
+            pos.set_pose(pose(current_theta_1,current_theta_2)) # set it back to park for a second
             pos.trajectory_from_here_simultaneous(_tdest) # calculate the movement
-            pos.pose(_tdest) # set it in position so we can continue the allocations
+            pos.set_pose(_tdest) # set it in position so we can continue the allocations
         return True
 
+
+    #not used
     def _move_to_position(self, pos):
         if pos.in_position:
             return True
@@ -538,12 +547,12 @@ class focal_plane(object):
             once = True
             while once:
                 once=False
-                for next_pose in pos.poses:
+                while not step_all([self.alpha_motor, self.beta_motor]):
+                    pos.set_pose_from_motors()
                     if _safe:
-                        pos.pose(next_pose)
                         if self._has_collision(pos):  # Did we hit anything along the way
                             _safe = False
-                            pos.pose([current_theta_1,current_theta_2])
+                            pos.set_pose([current_theta_1,current_theta_2])
                         pos.plot(self.axes)
                         plt.draw()
                         plt.pause(0.02)
@@ -582,6 +591,7 @@ class focal_plane(object):
         return pos.in_position
 
 
+    #not used
     def _move_to_pose(self, pos, pose=None):
         """
         Try to move this positioner to a specified new pose
@@ -591,15 +601,15 @@ class focal_plane(object):
             pose = [0.0, pi]
         current_theta_1 = pos.theta_1
         current_theta_2 = pos.theta_2
-        current_target_path = pos.poses.copy()
+        #current_target_path = pos.poses.copy()
         _safe = True
         if self.figure:
 
-            # calculate a new set of poses to get to the new destination
+            # calculate the motor paths to get to the new destination
             pos.trajectory_from_here_simultaneous(pose)
-            for next_pose in pos.poses:
+            while not step_all([self.alpha_motor, self.beta_motor]):
+                pos.set_pose_from_motors()
                 if _safe:
-                    pos.pose(next_pose)
                     if self._has_collision(pos):  # Did we hit anything along the way
                         _safe = False
                         pos.pose([current_theta_1,current_theta_2])
@@ -712,9 +722,9 @@ class focal_plane(object):
                 # collisions - but skipping the other positioner as we are
                 # going to try moving it somewhere else.
                 if alt:
-                    this_pos.pose(this_pos.targets[t1][1])
+                    this_pos.set_pose(this_pos.targets[t1][1])
                 else:
-                    this_pos.pose(this_pos.targets[t1][0])
+                    this_pos.set_pose(this_pos.targets[t1][0])
                 p = None
                 for p in self.positioners:
                     if p is not other_pos:
@@ -736,5 +746,5 @@ class focal_plane(object):
                         return True
 
         # Failure - put this positioner back to where it was
-        this_pos.pose([theta1, theta2])
+        this_pos.set_pose([theta1, theta2])
         return False

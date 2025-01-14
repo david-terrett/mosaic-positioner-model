@@ -1,38 +1,35 @@
 # -*- coding utf-8 -*-
 
-def rerun(fp, istart):
+def rerun(fp, istart, pause=True):
     for i in fp.positioners:
         if i.id < istart:
             continue
         if i.target and not i.in_position:
             print ('moving ',i.id)
-            if i.move_to_position(fp.figure, fp.axes):
-                inp=input('Next ?')
-                if inp == "n":
+            i.zoom_to(fp.figure)
+            if i.move_to_target(fp.axes):
+                if not _next(pause):
                     break
                 else:
                     continue
             else:
                 b = i.collision_list[0]
                 if not b.in_position:
-                    if b.move_to_position(fp.figure, fp.axes):
-                        if i.move_to_position(fp.figure, fp.axes):
-                            inp=input('Next ?')
-                            if inp == "n":
+                    if b.move_to_target(fp.axes):
+                        if i.move_to_target(fp.axes):
+                            if not _next(pause):
                                 break
                         else:
                             c = i.collision_list[0]
                             if c == b:
                                 print("Stuck at ", b.id)
-                                break
                     else:
                         c=b.collision_list[0]
                         if c.id > b.id:
-                            if c.move_to_position(fp.figure, fp.axes):
-                                if b.move_to_position(fp.figure, fp.axes):
-                                    if i.move_to_position(fp.figure, fp.axes):
-                                        inp = input('Next ?')
-                                        if inp == "n":
+                            if c.move_to_target(fp.axes):
+                                if b.move_to_target(fp.axes):
+                                    if i.move_to_target(fp.axes):
+                                        if not _next(pause):
                                             break
                                     else:
                                         d = i.collision_list[0]
@@ -43,11 +40,11 @@ def rerun(fp, istart):
                                     if d == c:
                                         print("Stuck at ", c.id)
                 else:
-                    if b.reverse_last_move(fp.figure, fp.axes):
-                        if i.move_to_position(fp.figure, fp.axes):
-                            b.move_to_position(fp.figure, fp.axes)
-                            inp  = input('Next ?')
-                            if inp == "n":
+                    print("Reversing ", b.id)
+                    if b.reverse_last_move(fp.axes):
+                        if i.move_to_target(fp.axes):
+                            b.move_to_target(fp.axes)
+                            if not _next(pause):
                                 break
                         else:
                             c = i.collision_list[0]
@@ -57,3 +54,10 @@ def rerun(fp, istart):
                     else:
                         print("Stuck at ", b.id)
                         break
+
+def _next(pause):
+    if pause:
+        inp  = input('Next ?')
+        if inp == "n":
+            return False
+    return True

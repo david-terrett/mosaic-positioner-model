@@ -10,6 +10,7 @@ from math import sin
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
+from typing import NamedTuple
 
 from .geometry import distance
 from .geometry import intersects
@@ -21,6 +22,8 @@ from .geometry_utilities import rotate_point
 from .geometry_utilities import rotate_polygon
 
 from .motor import motor
+from .motor import motor_positions
+from .motor import step_all
 
 class positioner(object):
     """
@@ -48,9 +51,10 @@ class positioner(object):
         The minimum reach of the positioner with the IR fibre
     neighbours : list
         A list of neighbouring positioners
+    target_pose : pose
+        Pose that positions the fiber on the assigned target
     targets : dict
         A dictionary of reachable targets indexed by target
-        Angle of lower arm relative to x axis (radians)
     theta_2 : float
         Angle of lower arm relative to x axis (radians)
     type : int
@@ -81,7 +85,8 @@ class positioner(object):
         """
         self.alpha_motor = motor()
         self.beta_motor = motor()
-        self.position = position
+        self.origin = position
+        self.in_position = False
         self.id = ident
         self.type = type
         self.targets = {}
@@ -149,12 +154,12 @@ class positioner(object):
         vis_fiber = move_point(vis_fiber, axis_2.x(), axis_2.y())
 
         # Move everything to the positioner's position
-        self._axis_1_base = move_point(axis_1, position.x(), position.y())
-        self._arm_1_base = move_polygon(arm_1, position.x(), position.y())
-        self._axis_2_base = move_point(axis_2, position.x(), position.y())
-        self._arm_2_base = move_polygon(arm_2, position.x(), position.y())
-        self._ir_fiber_base = move_point(ir_fiber, position.x(), position.y())
-        self._vis_fiber_base = move_point(vis_fiber, position.x(), position.y())
+        self._axis_1_base = move_point(axis_1, self.origin.x(), self.origin.y())
+        self._arm_1_base = move_polygon(arm_1, self.origin.x(), self.origin.y())
+        self._axis_2_base = move_point(axis_2, self.origin.x(), self.origin.y())
+        self._arm_2_base = move_polygon(arm_2, self.origin.x(), self.origin.y())
+        self._ir_fiber_base = move_point(ir_fiber, self.origin.x(), self.origin.y())
+        self._vis_fiber_base = move_point(vis_fiber, self.origin.x(), self.origin.y())
 
         # Set the axes to the angles we used when defining the geometry
         self._theta_1_base = pi/2.0
@@ -182,7 +187,7 @@ class positioner(object):
                                              vis_fiber.x() - axis_2.x()) + pi / 2.0
 
         # Park the positioner
-        self.tpose = [0., pi]
+        self.target_pose = pose(0., pi)
         self.park()
 
 
@@ -236,10 +241,10 @@ class positioner(object):
             self.target.positioner = None
         if t:
             if not alt:
-                self.tpose = self.targets[t][0]
+                self.target_pose = self.targets[t][0]
             else:
-                self.tpose = self.targets[t][1]
-            self.pose(self.tpose)
+                self.target_pose = self.targets[t][1]
+            self.set_pose(self.target_pose)
 
             # Assign the positioner to the target
             t.positioner = self
@@ -323,6 +328,39 @@ class positioner(object):
         return dt1, dt2
 
 
+    def get_motors_from_pose(self, theta):
+        """
+        Get the motor positions that match the pose
+
+        Parameters
+        ----------
+        theta : list[float]
+            Axis angles (radians)
+
+        Returns
+        -------
+        pos : motor_positions
+            motor positions
+        """
+        alpha = degrees(atan2(sin(theta[0]), cos(theta[0])))
+        b = theta[1] - theta[0] - pi
+        beta = degrees(atan2(sin(b), cos(b)))
+
+        if alpha + 360.0 <= self.alpha_motor.high_limit:
+            alpha_alt = alpha + 360.0
+        elif alpha - 360.0 >= self.alpha_motor.low_limit:
+            alpha_alt = alpha - 360.0
+        else:
+            alpha_alt = None
+        if beta + 360.0 <= self.beta_motor.high_limit:
+            beta_alt = beta + 360.0
+        elif beta - 360.0 >= self.beta_motor.low_limit:
+            beta_alt = beta - 360.0
+        else:
+            beta_alt = None
+        return motor_positions(alpha, alpha_alt, beta, beta_alt)
+
+
     def is_ir(self):
         """
         Has an IR fibre
@@ -365,9 +403,9 @@ class positioner(object):
 
         The positioner is moved to angle zero in both axes.
         """
-        self.pose([0, pi])
-        self.poses = [[0, pi]]
-        self.pose_index = 0
+        self.set_pose(pose(0, pi))
+        self.path = [motor_positions(0.0, None, 0.0, None)]
+        self.path = 0
         self.in_position = True
 
 
@@ -415,23 +453,23 @@ class positioner(object):
 
     def move_to_position(self, figure, axes, move_parked=False):
         """
-        move through the calculated poses to get to destination, check for
+        move through the calculated path to get to destination, check for
         collisions at each step and report collisions.
         """
         if self.in_position:
             return True
         if not move_parked and not self.target:
             return True
-        start_pose = [self.theta_1,self.theta_2]
+        start_pose = pose(self.theta_1,self.theta_2)
         if figure:
             self.zoom_to(figure)
             _safe = True
-            for next_pose in self.poses:
+            while not step_all([self.alpha_motor, self.beta_motor]):
+                self.set_pose_from_motors()
                 if _safe:
-                    self.pose(next_pose)
                     _safe = not self._has_collision() # did we hit anything?
                     if (not _safe):
-                        self.pose(start_pose)
+                        self.set_pose(start_pose)
                     self.plot(axes)
                     plt.draw()
                     plt.pause(0.02)
@@ -447,14 +485,16 @@ class positioner(object):
         return self.in_position
 
 
+    # not used?
     def move_to_pose(self, figure, axes, pose=None):
         """
-        move the positioner to a newly specified pose, plotting and checking for collisions along the way
+        move the positioner to a newly specified pose, plotting and checking for
+        collisions along the way
         """
         if pose is None:
             pose = [0.0, pi]
         start_pose = [self.theta_1,self.theta_2]
-        current_target_path = self.poses.copy()
+        #current_target_path = self.poses.copy()
         _old_in_position = self.in_position
         _safe = True
 
@@ -475,10 +515,10 @@ class positioner(object):
                 print (self.id,': Moved to requested position')
 
                 # calculate new path from here to target pose.
-                self.trajectory_from_here_simultaneous(self.tpose)
+                self.trajectory_from_here_simultaneous(self.target_pose)
                 if (self.in_position):
                     self.in_position = False
-                if ((next_pose[0] == self.tpose[0]) and (next_pose[1] == self.tpose[1])):
+                if ((next_pose[0] == self.target_pose[0]) and (next_pose[1] == self.target_pose[1])):
                     self.in_position = True
             else:
                 self.in_position = _old_in_position
@@ -492,21 +532,64 @@ class positioner(object):
         return _safe
 
 
-    def pose(self, theta):
+    def move_to_target(self, axes=None):
+        """
+        move through the calculated path to get to the assigned target, check for
+        collisions at each step and report collisions.
+        """
+
+        # Already there so return true
+        if self.in_position:
+            return True
+
+        # No target so return true
+        if not self.target:
+            return True
+
+        # Save the current motor positions
+        start_alpha = self.alpha_motor.position
+        start_beta = self.beta_motor.position
+
+        safe = True
+        while not step_all([self.alpha_motor, self.beta_motor]):
+            self.set_pose_from_motors()
+            safe = not self._has_collision() # did we hit anything?
+            if not safe:
+                self.alpha_motor.set(start_alpha)
+                self.beta_motor.set(start_beta)
+                self.set_pose_from_motors()
+                break
+            if axes:
+                self.plot(axes)
+                plt.draw()
+                plt.pause(0.02)
+        if safe:
+            print(self.id, ': Moved to final position')
+            self.in_position = True
+        else:
+            print(self.id, ': Blocked by ', self.collision_list[0].id)
+        if axes:
+            self.plot(axes)
+            plt.draw()
+            plt.pause(0.02)
+        return self.in_position
+
+
+    def set_pose(self, angles):
         """
         Set the axis positions
 
         Parameters
         ----------
-        theta : list[float]
+        angles : pose
             Axis angles (radians)
         """
-        self.theta_1 = theta[0]
-        self.theta_2 = theta[1]
+        self.theta_1 = angles.a
+        self.theta_2 = angles.b
 
         # Rotate arm 1
-        c = cos(theta[0] - self._theta_1_base)
-        s = sin(theta[0] - self._theta_1_base)
+        c = cos(angles.a - self._theta_1_base)
+        s = sin(angles.a - self._theta_1_base)
         self.arm_1 = rotate_polygon(self._arm_1_base, self._axis_1_base, c, s)
         self.axis_2 = rotate_point(self._axis_2_base, self._axis_1_base, c, s)
 
@@ -519,49 +602,48 @@ class positioner(object):
                              self.axis_2.y() - self._axis_2_base.y())
 
         # Rotate arm 2
-        c = cos(theta[1] - self._theta_2_base)
-        s = sin(theta[1] - self._theta_2_base)
+        c = cos(angles.b - self._theta_2_base)
+        s = sin(angles.b - self._theta_2_base)
         self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
         self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
         self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
 
 
-    def reverse_last_move(self, figure, axes):
+    def reverse_last_move(self, axes):
         """
-        Try to reverse the last move we made, assuming the poses are
+        Try to reverse the last move we made, assuming the motor paths are
         unchanged. Check along the way.
         """
-        start_pose = [self.theta_1,self.theta_2]
-        current_target_path = self.poses.copy()
-        _safe = True
-        if figure:
-            for i in range(0,len(self.poses)):
-                if _safe:
-                    self.pose(self.poses[-(i+1)])
-                    if self._has_collision(): # did we hit anything
-                        _safe = False
-                        self.pose(start_pose)
-                    self.plot(axes)
-                    plt.draw()
-                    plt.pause(0.02)
-            if _safe:
-                if (self.in_position):
-                    self.in_position = False
-                if ((self.poses[-(i + 1)][0] == self.tpose[0]) and (
-                     self.poses[-(i + 1)][1] == self.tpose[1])):
-                    self.in_position = True
-            else:
-                print(self.id,
-                     ': Collided with something trying to return to last start position',
-                      self.collision_list[0].id)
+        # Save the current motor positions
+        start_alpha = self.alpha_motor.position
+        start_beta = self.beta_motor.position
+
+        safe = True
+        while not step_all([self.alpha_motor, self.beta_motor]):
+            self.set_pose_from_motors()
+            safe = not self._has_collision() # did we hit anything?
+            if not safe:
+                self.alpha_motor.set(start_alpha)
+                self.beta_motor.set(start_beta)
+                self.set_pose_from_motors()
+                break
+            if axes:
+                self.plot(axes)
+                plt.draw()
+                plt.pause(0.02)
+        if not safe:
+            print(self.id,
+                 ': Collided with something trying to return to last start position',
+                 self.collision_list[0].id)
             plt.pause(0.5)
-        else:
+        if axes:
             self.plot(axes)
             plt.draw()
             plt.pause(0.001)
-        return _safe
+        return safe
 
 
+    # Not used?
     def step_one_pose(self,figure,axes,forward=True):
         '''
         Probably need to return more than one flag here
@@ -594,46 +676,31 @@ class positioner(object):
         """
         Set the pose from the current motor positions
         """
-        t0 = radians(self.alpha_motor.p)
-        t1 = t0 + radians(180 + self.beta_motor.p)
-        self.pose([t0, t1])
+        t0 = radians(self.alpha_motor.position)
+        t1 = t0 + radians(180 + self.beta_motor.position)
+        self.set_pose(pose(t0, t1))
 
 
-    def set_next_pose(self, i):
-        self.pose(self.poses[i])
-        return
-
-
-    def trajectory_from_here_simultaneous(self, theta):
+    def trajectory_from_here_simultaneous(self, pose):
         """
-        Move both arms in 50 steps together
+        Set the motor paths to move the positioner to the destination pose
+
         if positioner is deployed and theta is theta_park this should park
+
+        Arguments
+        ---------
+        pose : pose
+            Destination pose
         """
-        abend = self._pose_to_arm_angles(theta) # final alpha beta in -pi < angle < pi
-        pstart = abend.copy()
-        pstart[0] = self.theta_1
-        pstart[1] = self.theta_2
-        abstart = self._pose_to_arm_angles(pstart) # initial alpha beta in -pi < angle < pi
-        self.poses = []
-        self.pos_index = 0
-#        print ('Pose Start: ',np.asarray(pstart)*180/np.pi)
-#        print ('Pose End: ',np.asarray(pend)*180/np.pi)
-#        print ('AB Start: ',np.asarray(abstart)*180/np.pi)
-#        print ('AB End: ',np.asarray(abend)*180/np.pi)
-        d0 = abend[0] - abstart[0]
-        d1 = abend[1] - abstart[1]
-        abnew = abstart.copy()
-        for i in range(0,51):
-            abnew[0] = abstart[0] + d0 * i / 50
-            abnew[1] = abstart[1] + d1 * i / 50
-            pnew = self._arm_angles_to_pose(abnew)
-            self.poses.append(pnew)
+        m = self.get_motors_from_pose(pose)
+        self.alpha_motor.set_path(m.alpha)
+        self.beta_motor.set_path(m.beta)
         return
 
 
     def uncollide(self, step=10.0):
         """
-        Moves the positioner to somewhere that doesn't collide with any of its
+        Moves the positioner pose to somewhere that doesn't collide with any of its
         neighbours.
 
         Parameters
@@ -649,7 +716,7 @@ class positioner(object):
         while a < a_end:
             b = b_start
             while b < b_end:
-                self.pose([a, b])
+                self.set_pose(pose(a, b))
                 if not self._has_collision():
                     return
                 b += radians(step)
@@ -657,7 +724,7 @@ class positioner(object):
         raise RuntimeError("no position found without a collision")
 
 
-    def zoom_to(self, figure, winsize=240):
+    def zoom_to(self, figure, winsize=360):
         xmin = self._axis_1_base.x() - winsize/2
         xmax = self._axis_1_base.x() + winsize/2
         ymin = self._axis_1_base.y() - winsize/2
@@ -697,14 +764,15 @@ class positioner(object):
             arm_2_angle_offset = self._ir_arm_2_angle_offset
         else:
             arm_2_angle_offset = self._vis_arm_2_angle_offset
-        return ([arm_1_1 - self._arm_1_angle_offset, arm_2_1 - arm_2_angle_offset],
-                [arm_1_2 - self._arm_1_angle_offset, arm_2_2 - arm_2_angle_offset])
+        return [pose(arm_1_1 - self._arm_1_angle_offset, arm_2_1 - arm_2_angle_offset),
+                pose(arm_1_2 - self._arm_1_angle_offset, arm_2_2 - arm_2_angle_offset)]
 
 
-    def _arm_angles_to_pose(self,theta):
+    # not used?
+    def _arm_angles_to_pose(self, pose):
         # need to wrap angles here
-        pose = theta.copy()
-        pose[1] = self._wrap_angle_pmpi(theta[1]+theta[0]+pi)
+        pose = pose.copy()
+        pose[1] = _wrap_angle_pmpi(theta[1]+theta[0]+pi)
         return pose
 
 
@@ -713,24 +781,24 @@ class positioner(object):
         Build the collision matrix for this positioner
         """
         # Save our current pose
-        my_pose = [self.theta_1, self.theta_2]
+        my_pose = pose(self.theta_1, self.theta_2)
 
         # For each neighbour
         np = 0
         for p in self.neighbours:
-            other_pose = [p.theta_1, p.theta_2]
+            other_pose = pose(p.theta_1, p.theta_2)
             n1 = 0
             for t1 in self.targets:
-                self.pose(self.targets[t1][alt1])
+                self.set_pose(self.targets[t1][alt1])
                 n2 = 0
                 for t2 in p.targets:
-                    p.pose(p.targets[t2][alt2])
+                    p.set_pose(p.targets[t2][alt2])
                     matrix[self.id, n1, alt1, np, n2, alt2] = self.collides_with(p)
                     n2 += 1
                 n1 += 1
-            p.pose(other_pose)
+            p.set_pose(other_pose)
             np += 1
-        self.pose(my_pose)
+        self.set_pose(my_pose)
 
 
     def _has_collision(self):
@@ -743,23 +811,27 @@ class positioner(object):
         return False
 
 
-
     def _pose_to_arm_angles(self,theta):
         # need to wrap angles here
-        t = self._wrap_angle_pmpi(theta)
+        t = _wrap_angle_pmpi(theta)
         arm_angles=t.copy()
-        arm_angles[1] = self._wrap_angle_pmpi(self._wrap_angle_pmpi(t[1] - t[0]) - pi)
+        arm_angles[1] = _wrap_angle_pmpi(_wrap_angle_pmpi(t[1] - t[0]) - pi)
         return arm_angles
 
 
-    def _wrap_angle_pmpi(self, theta):
-        # wrap an angle into -pi < theta < pi
-        return np.arctan2(np.sin(theta), np.cos(theta))
+def _wrap_angle_pmpi(theta):
+    # wrap an angle into -pi < theta < pi
+    return np.arctan2(np.sin(theta), np.cos(theta))
 
 
-    def _wrap_angle_ztpi(self, theta):
-        # wrap an angle into 0 < theta < 2*pi
-        angle = self._wrap_angle_pmpi(theta)
-        if angle < 0:
-            angle = abs(angle) + 2 * (np.pi - abs(angle))
-        return angle
+def _wrap_angle_ztpi(theta):
+    # wrap an angle into 0 < theta < 2*pi
+    angle = _wrap_angle_pmpi(theta)
+    if angle < 0:
+        angle = abs(angle) + 2 * (np.pi - abs(angle))
+    return angle
+
+
+class pose(NamedTuple):
+    a: float
+    b: float
