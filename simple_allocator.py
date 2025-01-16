@@ -26,13 +26,20 @@ def simple_allocator(fp):
             # Create an iterator for this positioner's targets
             for t in pos.targets:
                 if not t.positioner:
-                    if fp.assign_target_to_positioner(pos, t, False):
+                    if pos.try_assigning_target(t, alt=False,
+                                                ignore_no_target=True):
+                        pos.set_pose_to_target()
                         break
                     else:
-                        if fp.assign_target_to_positioner(pos, t, True):
+                        if pos.try_assigning_target(t, alt=True,
+                                                    ignore_no_target=True):
+                            pos.set_pose_to_target()
                             break
 
     # Look for places for the unallocated positioners
     for pos in fp.positioners:
         if not pos.target:
-            pos.uncollide()
+            try:
+                pos.uncollide()
+            except:
+                print("Warning: no position found for positioner", pos.id)
