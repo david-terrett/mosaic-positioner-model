@@ -4,7 +4,7 @@ def rerun(fp, istart, pause=True, log=True):
     for i in fp.positioners:
         if i.id < istart:
             continue
-        if i.target and not i.in_position:
+        if i.target and not i.on_target:
             print ('moving ',i.id)
             i.zoom_to(fp.figure)
             if i.move_to_target(fp.axes, log=log):
@@ -14,7 +14,7 @@ def rerun(fp, istart, pause=True, log=True):
                     continue
             else:
                 b = i.blocker
-                if not b.in_position:
+                if not b.on_target:
                     if b.move_to_target(fp.axes):
                         if i.move_to_target(fp.axes, log=log):
                             if not _next(pause):

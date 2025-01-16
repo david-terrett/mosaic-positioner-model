@@ -7,10 +7,11 @@ from math import fabs
 from math import radians
 from math import pi
 from math import sin
+from typing import NamedTuple
+
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
-from typing import NamedTuple
 
 from .geometry import distance
 from .geometry import intersects
@@ -22,8 +23,29 @@ from .geometry_utilities import rotate_point
 from .geometry_utilities import rotate_polygon
 
 from .motor import motor
-from .motor import motor_positions
 from .motor import step_all
+
+
+class motor_positions(NamedTuple):
+    """
+    Motor positions that pose a positioner
+
+    Attributes
+    ----------
+    alpha: float
+        alpha motor position in the range -180/180
+    alpha_alt: float
+        alternate alpha motor position or None
+    beta: float
+        beta motor position in the range -180/180
+    beta_alt: float
+        alternate beta motor position or None
+    """
+    alpha: float
+    alpha_alt: float
+    beta: float
+    beta_alt: float
+
 
 class positioner(object):
     """
@@ -41,6 +63,8 @@ class positioner(object):
         position of second axis in focal plane
     beta_motor : motor
         beta axis motor
+    blocker : positioner
+        positioner the blocked the last attempted move (or None)
     id : any
         an identifier for the positioner
     ir_fiber : point
@@ -51,11 +75,13 @@ class positioner(object):
         The minimum reach of the positioner with the IR fibre
     neighbours : list
         A list of neighbouring positioners
-    on_target : boolean
-        Positioner is positioned on the target
+    on_target : bool
+        True if the positioner's fiber is positioned on the target
+    origin : point
+        Position of the lower arm axis in the focal plane
     target_pose : pose
         Pose that positions the fiber on the assigned target
-    targets : dict
+    targets : dict of targets
         A dictionary of reachable targets indexed by target
     theta_2 : float
         Angle of lower arm relative to x axis (radians)
@@ -63,6 +89,7 @@ class positioner(object):
         type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
         6: VIS+VIS-HR, 8: Camera (i.e. a bit mask)
     theta_1 : float
+        Angle of upper arm relative to x axis (radians)
     vis_fiber : point
         location of VIS fiber in focal plane
     vis_max_r : float
@@ -72,29 +99,30 @@ class positioner(object):
     """
 
 
-    def __init__(self, position, ident, type):
+    def __init__(self, position, ident):
         """
         Create positioner
 
         Parameters
         ----------
         position : point
-            position of positioner axis 1 in focal plane
+            Position of positioner axis 1 in focal plane
         ident : any
-            identifier for the positioner
-        type : int
-            the type of positioner
+            Identifier for the positioner
         """
-        self.alpha_motor = motor()
-        self.beta_motor = motor()
         self.origin = position
         self.id = ident
-        self.on_target = False
-        self.type = type
-        self.targets = {}
-        self.target = None
-        self.neighbours = []
+
         self.blocker = None
+        self.alpha_motor = motor()
+        self.beta_motor = motor()
+        self.neighbours = []
+        self.on_target = False
+        self.target = None
+        self.target_pose = None
+        self.targets = {}
+        self.type = 0
+
         self._d = []
         self._patches = []
         self._colours={0:'w',1:'r',2:'b',3:'m',6:'g',8:'c'}
@@ -125,7 +153,7 @@ class positioner(object):
             arm_1.append(point(xx, yy))
         arm_1.append(point(w, 0))
 
-        # Position of arm2 rotation axis when arm 1 is parked
+        # Position of arm 2 rotation axis when arm 1 is parked
         axis_2 = point(0.0, 28.5)
 
         # Outline of arm 2 with axis at 0.0 and angle -90 (so folded
@@ -227,25 +255,42 @@ class positioner(object):
             t.reachable.append(self)
         return reachable
 
-    def try_assigning_target(self, t, alt, collision_check=True,
+
+    def try_assigning_target(self, targ, alt, collision_check=True,
                              ignore_no_target=True):
         """
         Try assigning a target to positioner. If we can't find a target that
         doesn't cause a collision with another positioner that already has a
         target assigned, put the positioner back to where it was.
+
+        Arguments
+        ---------
+        targ : target
+            The target to assign
+        alt : bool
+            Use the alternative pose
+        collision_check : bool
+            Check for collisions with neighbouring positioners
+        ignore_no_target : bool
+            Ignore neighbouring positioners that don't have a target
+
+        Returns
+        -------
+        : bool
+            True if the target was successfully assigned
         """
         current_theta_1 = self.theta_1
         current_theta_2 = self.theta_2
         current_target = self.target
         current_on_target = self.on_target
-        self.assign_target(t, alt)
+        self.assign_target(targ, alt)
         self.set_pose_to_target()
         if collision_check and self.has_collision(ignore_no_target):
             self.assign_target(current_target, False)
             self.set_pose(pose(current_theta_1, current_theta_2))
             self.on_target = current_on_target
             return False
-        self.in_position = False
+        self.on_target = False
         return True
 
 
@@ -256,7 +301,7 @@ class positioner(object):
         Parameters
         ----------
         t : target
-            target to assign
+            Target to assign
         alt : bool
             Use alternate arm position
         """
@@ -356,13 +401,13 @@ class positioner(object):
         return dt1, dt2
 
 
-    def get_motors_from_pose(self, theta):
+    def get_motors_from_pose(self, pose):
         """
         Get the motor positions that match the pose
 
         Parameters
         ----------
-        theta : list[float]
+        pose : pose
             Axis angles (radians)
 
         Returns
@@ -370,8 +415,8 @@ class positioner(object):
         pos : motor_positions
             motor positions
         """
-        alpha = degrees(atan2(sin(theta[0]), cos(theta[0])))
-        b = theta[1] - theta[0] - pi
+        alpha = degrees(atan2(sin(pose.a), cos(pose.a)))
+        b = pose.b - pose.b - pi
         beta = degrees(atan2(sin(b), cos(b)))
 
         if alpha + 360.0 <= self.alpha_motor.high_limit:
@@ -396,14 +441,14 @@ class positioner(object):
 
         Arguments
         ---------
-        ignore_no_target : boolean
+        ignore_no_target : bool
             ignore neighbours with no target assigned
-        ignore_not_on_target : boolean
+        ignore_not_on_target : bool
             ignore neighbours which are not on target
 
         Returns
         -------
-        positioner
+        : positioner
             The positioner the collision is with or None if there is no collision
         """
         for pos in self.neighbours:
@@ -455,10 +500,20 @@ class positioner(object):
     def move_to_target(self, axes=None, log=False):
         """
         move to the assigned target
+
+        Arguments
+        ---------
+        axes : matplotlib axes
+            Axes to plot positioner on
+
+        Returns
+        -------
+        : bool
+            True if the move succeeded
         """
 
         # Already there so return true
-        if self.in_position:
+        if self.on_target:
             return True
 
         # No target so return true
@@ -467,20 +522,29 @@ class positioner(object):
 
         # Move to the target pose
         self.set_path_to_target()
-        self.move(axes, log)
+        self.on_target = self.move(axes, log)
 
-        # Set the on target flag
-        self.on_target = self.in_position
-
-        return self.in_position
+        return self.on_target
 
 
     def move_to_pose(self, destination_pose, axes=None, log=False):
         """
         Move to the specified pose
+
+        Arguments
+        ---------
+        destination_pose : pose
+            Pose to move to
+        axes : matplotlib axes
+            Axes to plot positioner on
+
+        Returns
+        -------
+        : bool
+            True if the move succeeded
         """
         self.set_path_to_pose(destination_pose)
-        self.move(axes, log)
+        return self.move(axes, log)
 
 
     def move(self, axes=None, log=False):
@@ -488,9 +552,14 @@ class positioner(object):
         Move the position along the motor paths checking for
         a collision at each step.
 
+        Arguments
+        ---------
+        axes : matplotlib axes
+            Axes to plot positioner on
+
         Returns
         -------
-        boolean
+        : bool
             True if the move succeeded
         """
 
@@ -521,17 +590,17 @@ class positioner(object):
             plt.draw()
             plt.pause(0.02)
         self.blocker = blocker
-        self.in_position = blocker is None
-        return self.in_position
+        self.on_target = blocker is None
+        return self.on_target
 
 
-    def plot(self, ax):
+    def plot(self, axes):
         """
         Plot the positioner outline
 
         Parameters
         ----------
-            ax : matplotlib.Axes
+            axes : matplotlib axes
                 plot axes
         """
         # Delete existing drawing
@@ -545,22 +614,22 @@ class positioner(object):
         if self.type != 0:
 
             # Draw the arms
-            self._d.append(ax.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
-            self._d.append(ax.plot(self.arm_2.x(), self.arm_2.y(),
+            self._d.append(axes.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
+            self._d.append(axes.plot(self.arm_2.x(), self.arm_2.y(),
                                    color=self._colours[self.type]))
 
             # Draw the axes
-            self._d.append(ax.plot(self._axis_1_base.x(), self._axis_1_base.y(),
+            self._d.append(axes.plot(self._axis_1_base.x(), self._axis_1_base.y(),
                                    '+', color='black', markersize=4.0))
-            self._d.append(ax.plot(self.axis_2.x(), self.axis_2.y(), '+',
+            self._d.append(axes.plot(self.axis_2.x(), self.axis_2.y(), '+',
                                    color='black', markersize=4.0))
             # Draw the fibers
-            self._patches.append(ax.add_patch(Ellipse(xy=(self.ir_fiber.x(),
+            self._patches.append(axes.add_patch(Ellipse(xy=(self.ir_fiber.x(),
                                                           self.ir_fiber.y()),
                                               width=5, height=5, angle=0,
                                               facecolor="none",
                                               edgecolor='red')))
-            self._patches.append(ax.add_patch(Ellipse(xy=(self.vis_fiber.x(),
+            self._patches.append(axes.add_patch(Ellipse(xy=(self.vis_fiber.x(),
                                                           self.vis_fiber.y()),
                                               width=5, height=5, angle=0,
                                               facecolor="none",
@@ -570,7 +639,17 @@ class positioner(object):
     def reverse_last_move(self, axes=None, log=False):
         """
         Try to reverse the last move we made, assuming the motor paths are
-        unchanged. Check along the way.
+        unchanged.
+
+        Arguments
+        ---------
+        axes : matplotlib axes
+            Axes to plot positioner on
+
+        Returns
+        -------
+        : bool
+            True if the move succeeded
         """
         # Save the current motor positions
         start_alpha = self.alpha_motor.position
@@ -602,33 +681,28 @@ class positioner(object):
         return blocker is None
 
 
-    def set_pose(self, pose):
+    def set_pose(self, positioner_pose):
         """
         Set the pose
 
         Arguments
         ---------
-        pose : pose
+        positioner_pose : pose
             The new pose
         """
-        self.theta_1 = pose.a
-        self.theta_2 = pose.b
-        m = self.get_motors_from_pose(pose)
-        self.alpha_motor.set(m.alpha)
-        self.beta_motor.set(m.beta)
-        self.on_target = False
+        self.theta_1 = positioner_pose.a
+        self.theta_2 = positioner_pose.b
         self._update_geometry()
 
 
     def set_pose_to_target(self):
         """
-        Set the positioner to the current target
+        Set the pose to the current target
 
         Does nothing if there is no target assigned
         """
         if self.target:
             self.set_pose(self.target_pose)
-            self.on_target = True
 
 
     def set_pose_from_motors(self):
@@ -639,7 +713,6 @@ class positioner(object):
         t1 = t0 + radians(180 + self.beta_motor.position)
         self.theta_1 = t0
         self.theta_2 = t1
-        self.on_target = False
         self._update_geometry()
 
 
@@ -657,7 +730,6 @@ class positioner(object):
         m = self.get_motors_from_pose(destination_pose)
         self.alpha_motor.set_path(m.alpha)
         self.beta_motor.set_path(m.beta)
-        return
 
 
     def set_path_to_target(self):
@@ -668,16 +740,14 @@ class positioner(object):
         Always uses the principle motor positions and not the alternate.
 
         Does nothing if there is no target assigned
-
         """
         if self.target:
             m = self.get_motors_from_pose(self.target_pose)
             self.alpha_motor.set_path(m.alpha)
             self.beta_motor.set_path(m.beta)
-        return
 
 
-    def uncollide(self, step=10.0):
+    def uncollide(self, step=11.0):
         """
         Moves the positioner pose to somewhere that doesn't collide with any of its
         neighbours.
@@ -704,6 +774,17 @@ class positioner(object):
 
 
     def zoom_to(self, figure, winsize=360):
+        """
+        Zoom plot and centre on this positioner
+
+        Arguments
+        ---------
+        figure : mathplotlib figure
+
+        winsize : int
+            Window size
+
+        """
         xmin = self._axis_1_base.x() - winsize/2
         xmax = self._axis_1_base.x() + winsize/2
         ymin = self._axis_1_base.y() - winsize/2
@@ -780,6 +861,9 @@ class positioner(object):
         return arm_angles
 
     def _update_geometry(self):
+
+        # Get pose
+
 
         # Rotate arm 1
         c = cos(self.theta_1 - self._theta_1_base)

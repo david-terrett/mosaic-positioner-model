@@ -23,7 +23,7 @@ class focal_plane(object):
         positioners : [positioner]
             List of the positioners in the focal plane
         targets : [targets]
-            List of targets
+            List of targets in the field
         x_max : double
             Maximum extend of field in x
         x_min : double
@@ -43,7 +43,7 @@ class focal_plane(object):
         self.y_max = 12.0 * self._dy
         self.y_min = -self.y_max
 
-        self._types = [3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
+        types = [3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
                        6,3,1,6,3,1,1,3,6,1,3,6,                # 12
                        6,3,1,6,3,1,1,3,6,1,3,6,                # 12
                        3,1,6,3,1,6,1,6,1,3,6,1,3,              # 13
@@ -89,10 +89,13 @@ class focal_plane(object):
         self._add_column(10, 9)
         self._add_column(-10, 9)
 
+        # Set the positioner types
+        for p in self.positioners:
+            p.type = types[p.id]
+
         # Build list of neighbours for each positioner ignoring ones that
         # are absent
         for p in self.positioners:
-            p.type = self._types[p.id]
             xp = p.origin.x()
             yp = p.origin.y()
             p.neighbours = []
@@ -140,7 +143,7 @@ class focal_plane(object):
             self._plot_targets()
 
         # The collision matris is now invalid
-        self_collision_matrix = None
+        self.collision_matrix = None
 
 
     def build_collision_matrix(self):
@@ -230,19 +233,16 @@ class focal_plane(object):
 
         Returns
         -------
-        : list
-            A list of pairs of colliding positioners or None if there
+        : list of list of positioners
+            A list of pairs of colliding positioners
             are no collisions
         """
         collisions = []
         for p1 in self.positioners:
-            for p2 in p1.neighbours:
-                if p1.collides_with(p2):
-                    collisions.append([p1, p2])
-        if len(collisions) > 0:
-            return collisions
-        else:
-            return None
+                for p2 in p1.neighbours:
+                    if p1.collides_with(p2):
+                        collisions.append([p1, p2])
+        return collisions
 
 
     def clear_targets(self):
@@ -296,7 +296,7 @@ class focal_plane(object):
             pos.alpha_motor.set(0.0)
             pos.beta_motor.set(0.0)
             pos.set_pose_from_motors()
-            pos.in_position = False
+            pos.on_target = False
         return
 
 
@@ -378,7 +378,7 @@ class focal_plane(object):
         else:
             print("all positioners can reach at least one target")
         print(f"and {one_target} can reach only one target")
-        print(f"{on_target} positioners can be moved to their target positions without collisions")
+        print(f"{on_target} positioners have been moved to their target positions")
 
 
     def save_targets(self, csvfile):
@@ -400,20 +400,6 @@ class focal_plane(object):
                              'VIS_HR': t.vis_hr})
 
 
-    def _add_column(self, x, n):
-        if n % 2:
-            self._add_positioner(x, 0, 1)
-            for y in range(1, floor(n/2.0) + 1):
-                self._add_positioner(x, y, 1)
-            for y in range(1, floor(n/2.0) + 1):
-                self._add_positioner(x, -y, 2)
-        else:
-            for y in range(0, floor(n/2.0)):
-                self._add_positioner(x, y + 0.5, 3)
-            for y in range(0, floor(n/2.0)):
-                self._add_positioner(x, -y - 0.5, 5)
-
-
     def swapper(self):
         """
         Look for targets for free positioners by looking for reachable targets
@@ -426,11 +412,32 @@ class focal_plane(object):
                     self._try_swap(pos, True)
 
 
-    def _add_positioner(self, i, j, t):
+    def _add_column(self, x, n):
+        if n % 2:
+            self._add_positioner(x, 0)
+            for y in range(1, floor(n/2.0) + 1):
+                self._add_positioner(x, y)
+            for y in range(1, floor(n/2.0) + 1):
+                self._add_positioner(x, -y)
+        else:
+            for y in range(0, floor(n/2.0)):
+                self._add_positioner(x, y + 0.5)
+            for y in range(0, floor(n/2.0)):
+                self._add_positioner(x, -y - 0.5)
+
+
+    def _add_positioner(self, i, j):
+        """
+        Add a positioner to the focal plane
+        """
         self.positioners.append(positioner(point(i * self._dx, j * self._dy),
-                                           len(self.positioners), t))
+                                           len(self.positioners)))
+
 
     def _plot_targets(self):
+        """
+        Plot all the targets
+        """
         for m in self._target_markers:
             try:
                 self._target_markers.remove(m)
@@ -483,10 +490,10 @@ class focal_plane(object):
                 # We have found a target for this positioner so now look
                 # for one for the positioner we are trying swapping with
                 for t2 in other_pos.targets:
-                    if self.assign_target_to_positioner(other_pos, t2, False):
+                    if other_pos.assign_target(t2, False):
                         this_pos.assign_target(t1)
                         return True
-                    if self.assign_target_to_positioner(other_pos, t2, True):
+                    if other_pos.assign_target(t2, True):
                         this_pos.assign_target(t1)
                         return True
 

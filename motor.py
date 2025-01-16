@@ -30,9 +30,9 @@ class motor(object):
             low limit (deg)
         """
         self.position = 0.0
-        self.path = None
         self.low_limit = low_limit
         self.high_limit = high_limit
+        self._path = None
 
 
     def set(self, position):
@@ -70,10 +70,10 @@ class motor(object):
         n = int(trunc((target - self.position) / step_d)) + 1
 
         # Generate the path
-        self.path = path(self.position)
+        self._path = path(self.position)
         for i in range(1, n):
-            self.path.append(self.position + i * step_d)
-        self.path.append(target)
+            self._path.append(self.position + i * step_d)
+        self._path.append(target)
 
 
     def step(self, back=False):
@@ -82,24 +82,17 @@ class motor(object):
 
         Returns
         -------
-        boolean
+        : bool
             Motor has reached its target
         """
         if back:
-            p = self.path.prev()
+            p = self._path.prev()
         else:
-            p = self.path.next()
+            p = self._path.next()
         if p is not None:
             self.position = p
             return False
         return True
-
-
-class motor_positions(NamedTuple):
-    alpha: float
-    alpha_alt: float
-    beta: float
-    beta_alt: float
 
 
 class path(object):
@@ -113,8 +106,8 @@ class path(object):
         start : float
             start position
         """
-        self.p = [start]
-        self.i = 0
+        self._p = [start]
+        self._i = 0
 
 
     def append(self, p):
@@ -126,7 +119,7 @@ class path(object):
         p : float
             position (degrees)
         """
-        self.p.append(p)
+        self._p.append(p)
 
 
     def start(self):
@@ -138,11 +131,11 @@ class path(object):
 
         Returns
         -------
-        float
+        : float
             First position in path
         """
-        self.i = 0
-        return self.p[0]
+        self._i = 0
+        return self._p[0]
 
 
     def next(self):
@@ -151,33 +144,50 @@ class path(object):
 
         Returns
         -------
-        float
-            Next position in path or None if there are no more points
+        : float
+            Next position in path or the last point if the motor is
+            at the end of its path
         """
-        self.i += 1
-        if self.i >= len(self.p):
+        self._i += 1
+        if self._i >= len(self._p):
             return None
-        return self.p[self.i]
+        return self._p[self._i]
 
 
     def prev(self):
         """
-        Previous position
+        Previous position in path or the first point if the motor
+        is at the begging of its path
 
         Returns
         -------
-        float
+        : float
             Previous position in path or None
         """
-        self.i -= 1
-        if self.i >= len(self.p):
-            return self.p[-1]
-        elif self.i < 0:
+        self._i -= 1
+        if self._i >= len(self._p):
+            return self._p[-1]
+        elif self._i < 0:
             return None
-        return self.p[self.i]
+        return self._p[self._i]
 
 
 def step_all(motors, back=False):
+    """
+    Step a set of motors
+
+    Arguments
+    ---------
+    motors : iterable of motors
+        Motors to step
+    back : bool
+        Step in reverse
+
+    Returns
+    -------
+    : bool
+        True if all the motors have reached the end of thier paths
+    """
     in_pos = True
     for m in motors:
         if not m.step(back):
