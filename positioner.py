@@ -94,6 +94,7 @@ class positioner(object):
         self.targets = {}
         self.target = None
         self.neighbours = []
+        self.blocker = None
         self._d = []
         self._patches = []
         self._colours={0:'w',1:'r',2:'b',3:'m',6:'g',8:'c'}
