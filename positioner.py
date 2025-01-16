@@ -519,6 +519,7 @@ class positioner(object):
             self.plot(axes)
             plt.draw()
             plt.pause(0.02)
+        self.blocker = blocker
         self.in_position = blocker is None
         return self.in_position
 
@@ -578,7 +579,7 @@ class positioner(object):
         while not step_all([self.alpha_motor, self.beta_motor]):
             self.set_pose_from_motors()
             blocker = self.has_collision() # did we hit anything?
-            if not blocker:
+            if blocker is not None:
                 self.alpha_motor.set(start_alpha)
                 self.beta_motor.set(start_beta)
                 self.set_pose_from_motors()
@@ -587,7 +588,7 @@ class positioner(object):
                 self.plot(axes)
                 plt.draw()
                 plt.pause(0.02)
-        if not blocker and log:
+        if blocker is not None and log:
             print(self.id,
                  ': Collided with something trying to return to last start position',
                  blocker.id)
@@ -596,6 +597,7 @@ class positioner(object):
             self.plot(axes)
             plt.draw()
             plt.pause(0.001)
+        self.blocker = blocker
         return blocker is None
 
 
