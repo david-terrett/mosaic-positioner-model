@@ -509,7 +509,7 @@ class positioner(object):
         return (self.type & 4) == 4
 
 
-    def move_to_target(self, axes=None, log=False):
+    def move_to_target(self, axes=None):
         """
         move to the assigned target
 
@@ -534,12 +534,12 @@ class positioner(object):
 
         # Move to the target pose
         self.set_path_to_target()
-        self.on_target = self.move(axes, log)
+        self.on_target = self.move(axes)
 
         return self.on_target
 
 
-    def move_to_pose(self, destination_pose, axes=None, log=False):
+    def move_to_pose(self, destination_pose, axes=None):
         """
         Move to the specified pose
 
@@ -556,10 +556,10 @@ class positioner(object):
             True if the move succeeded
         """
         self.set_path_to_pose(destination_pose)
-        return self.move(axes, log)
+        return self.move(axes)
 
 
-    def move(self, axes=None, log=False):
+    def move(self, axes=None):
         """
         Move the position along the motor paths checking for
         a collision at each step.
@@ -592,11 +592,6 @@ class positioner(object):
                 self.plot(axes)
                 plt.draw()
                 plt.pause(0.02)
-        if log:
-            if blocker is None:
-                print(self.id, ': Moved to final position')
-            else:
-                print(self.id, ': Blocked by ', blocker.id)
         if axes:
             self.plot(axes)
             plt.draw()
@@ -648,7 +643,7 @@ class positioner(object):
                                               edgecolor='red')))
 
 
-    def reverse_last_move(self, axes=None, log=False):
+    def reverse_last_move(self, axes=None):
         """
         Try to reverse the last move we made, assuming the motor paths are
         unchanged.
@@ -680,11 +675,6 @@ class positioner(object):
                 self.plot(axes)
                 plt.draw()
                 plt.pause(0.02)
-        if blocker is not None and log:
-            print(self.id,
-                 ': Collided with something trying to return to last start position',
-                 blocker.id)
-            plt.pause(0.5)
         if axes:
             self.plot(axes)
             plt.draw()

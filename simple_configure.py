@@ -1,6 +1,6 @@
 # -*- coding utf-8 -*-
 
-def simple_configure(fp, log=False):
+def simple_configure(fp):
     """
     Simple positioner deployment algorithm
 
@@ -21,7 +21,9 @@ def simple_configure(fp, log=False):
 
                 # Try moving
                 pos.zoom_to(fp.figure)
-                if pos.move_to_target(axes=fp.axes, log=log):
+                if pos.move_to_target(axes=fp.axes):
+                    print(pos.id, " moved to target")
                     progress = True
-        if log:
-            fp.report()
+                else:
+                    print(pos.id, " blocked by", pos.blocker.id)
+        fp.report()
