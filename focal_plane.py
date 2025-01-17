@@ -90,8 +90,8 @@ class focal_plane(object):
         self._add_column(-10, 9)
 
         # Set the positioner types
-        for p in self.positioners:
-            p.type = types[p.id]
+        for pos in self.positioners:
+            pos.type = types[pos.id]
 
         # Build list of neighbours for each positioner ignoring ones that
         # are absent
@@ -99,9 +99,9 @@ class focal_plane(object):
             xp = p.origin.x()
             yp = p.origin.y()
             p.neighbours = []
-            if p.type != 0:
+            if p.exists():
                 for q in self.positioners:
-                    if p is not q and q.type != 0:
+                    if p is not q and q.exists():
                         dx = xp - q.origin.x()
                         dy = yp - q.origin.y()
                         sep2 = dx*dx+dy*dy
@@ -355,19 +355,19 @@ class focal_plane(object):
         positioners = 0
         ir_allocated = 0
         vis_allocated = 0
-        for p in self.positioners:
-            if p.type != 0:
+        for pos in self.positioners:
+            if pos.exists():
                 positioners += 1
-                if len(p.targets) == 0:
+                if len(pos.targets) == 0:
                     unreachable += 1
-                elif len(p.targets) == 1:
+                elif len(pos.targets) == 1:
                     one_target += 1
-                if p.target:
-                    if p.target.ir:
+                if pos.target:
+                    if pos.target.ir:
                         ir_allocated += 1
-                    elif p.target.vis_lr or p.target.vis_hr:
+                    elif pos.target.vis_lr or pos.target.vis_hr:
                         vis_allocated += 1
-                if p.on_target:
+                if pos.on_target:
                     on_target += 1
         print(f"{ir_allocated} IR targets assigned to a positioner")
         print(f"{vis_allocated} VIS targets assigned to a positioner")

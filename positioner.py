@@ -401,6 +401,18 @@ class positioner(object):
         return dt1, dt2
 
 
+    def exists(self):
+        """
+        Positioner exists
+
+        Returns
+        -------
+        : bool
+            False if this is one of the non-existent positioners
+        """
+        return self.type != 0
+
+
     def get_motors_from_pose(self, pose):
         """
         Get the motor positions that match the pose
@@ -611,7 +623,7 @@ class positioner(object):
             patch.remove()
         self._patches = []
 
-        if self.type != 0:
+        if self.exists():
 
             # Draw the arms
             self._d.append(axes.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
