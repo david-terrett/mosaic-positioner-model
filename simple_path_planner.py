@@ -1,8 +1,12 @@
 # -*- coding utf-8 -*-
 
-def simple_configure(fp):
+def simple_path_planner(fp):
     """
-    Simple positioner deployment algorithm
+    Simple positioner path planning algorithm
+
+    Just try mving each positioner in turn. This is a very poor algorithm
+    that only manages to deploy a few positioners but tests the positioner
+    move functions.
 
     Parameters
     ---------

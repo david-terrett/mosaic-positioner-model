@@ -7,4 +7,4 @@ from .motor import path
 from .rerun import rerun
 from .resolve_conflict import resolve_conflict
 from .simple_allocator import simple_allocator
-from .simple_configure import simple_configure
+from .simple_path_planner import simple_path_planner

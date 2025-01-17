@@ -16,7 +16,7 @@ fp.park_all()
 
 fp.plot()
 #rerun(fp, 0, pause=False)
-simple_configure(fp)
+simple_path_planner(fp)
 plt.interactive(False)
 fp.plot()
 plt.show()
