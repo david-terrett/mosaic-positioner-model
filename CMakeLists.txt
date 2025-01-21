@@ -12,15 +12,16 @@ add_subdirectory(geometry)
 install(FILES
     __init__.py
     add_random_targets.py
+    brute_force_allocator.py
     demo_allocator.py
     focal_plane.py
     geometry_utilities.py
     motor.py
     positioner.py
     rerun.py
-    resolve_conflict.py
     simple_allocator.py
-    simple_configure.py
+    simple_path_planner.py
     target.py
+    test_setup.py
     DESTINATION positioner_model
 )

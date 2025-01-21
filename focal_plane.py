@@ -11,7 +11,6 @@ import numpy as np
 
 from .geometry import point
 from .positioner import positioner
-from .positioner import pose
 from .target import target
 
 class focal_plane(object):
@@ -381,6 +380,29 @@ class focal_plane(object):
         print(f"{on_target} positioners have been moved to their target positions")
 
 
+    def will_collide(self, p1, t1, alt1):
+        """
+        Use the collision matrix to determine if assigning the target
+        to the positioner will cause a collision.
+
+        Arguments
+        ---------
+            p1 : positioner
+                Positioner
+            t1 : target
+                Target
+            alt1 : bool
+                Use alternate pose
+        """
+        for p2 in range(len(self.neighbours_array[p1])):
+            t2 = self.pos_to_targ_array[self.neighbours_array[p1, p2]][0]
+            alt2 = self.pos_to_targ_array[self.neighbours_array[p1, p2]][1]
+            if t2 != -1:
+                if self.collision_matrix[p1, t1, alt1, p2, t2, alt2]:
+                    return True
+        return False
+
+
     def save_targets(self, csvfile):
         """
         Save targets to a CSV file
@@ -500,3 +522,12 @@ class focal_plane(object):
         # Failure - put this positioner back to where it was
         this_pos.set_pose([theta1, theta2])
         return False
+
+def test_setup():
+    fp = focal_plane()
+    add_random_targets(fp, density=6, ir=True)
+    add_random_targets(fp, density=5, vis_lr=True)
+    add_random_targets(fp, density=5, vis_hr=True)
+    simple_allocator(fp)
+    fp.park_all()
+    return fp

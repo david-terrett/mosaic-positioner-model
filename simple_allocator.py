@@ -1,7 +1,5 @@
 # -*- coding utf-8 -*-
-from .focal_plane import focal_plane
-from .positioner import positioner
-from .target import target
+from matplotlib import pyplot as plt
 
 def simple_allocator(fp):
     """
@@ -23,7 +21,7 @@ def simple_allocator(fp):
         # If this positioner doesn't have a target
         if not pos.target:
 
-            # Create an iterator for this positioner's targets
+            # For each of this positioner's targets
             for t in pos.targets:
                 if not t.positioner:
                     if pos.try_assigning_target(t, alt=False,
@@ -41,5 +39,5 @@ def simple_allocator(fp):
         if not pos.target:
             try:
                 pos.uncollide()
-            except:
+            except RuntimeError:
                 print("Warning: no position found for positioner", pos.id)

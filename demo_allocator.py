@@ -1,12 +1,16 @@
 # -*- coding utf-8 -*-
+if __name__ == "__main__" and __package__ is None:
+    __package__ = "positioner_model"
+
+from matplotlib import pyplot as plt
+
+from .add_random_targets import add_random_targets
 from .focal_plane import focal_plane
-from .positioner import positioner
-from .target import target
 
 def demo_allocator(fp):
     """
-    Target to positioner assignment algorithm that demostrates the use of the
-    collission matrix. It uses the same algorithm as the simple allocator
+    Target to positioner assignment algorithm that demonstrates the use of the
+    collision matrix. It uses the same algorithm as the simple allocator
     which takes less time than building the collision matrix.
 
     Parameters
@@ -20,10 +24,6 @@ def demo_allocator(fp):
         fp.build_collision_matrix()
 
     fp.clear_all_target_assignments()
-
-    # sort the list of positioners so that we allocate the ones
-    # with the fewest targets first
-    # positioners = sorted(fp.positioners, key=lambda p: len(p.targets))
 
     # Until there are no unallocated positioners left...
     for p in range(len(fp.positioners)):
@@ -64,11 +64,22 @@ def demo_allocator(fp):
         pos = fp.positioners[p]
         if t[0] != -1:
             targ = list(pos.targets)[t[0]]
-            fp.assign_target_to_positioner(pos, targ, t[1],
-                                       collision_check=False)
+            pos.try_assigning_target(targ, t[1],
+                                     collision_check=False)
         p += 1
 
     # Look for places for the unallocated positioners
     for pos in fp.positioners:
         if not pos.target:
             pos.uncollide()
+
+
+if __name__ == "__main__":
+    fp = focal_plane()
+    add_random_targets(fp, density=6, ir=True)
+    add_random_targets(fp, density=5, vis_lr=True)
+    add_random_targets(fp, density=5, vis_hr=True)
+    demo_allocator(fp)
+    fp.report()
+    fp.plot()
+    plt.show()

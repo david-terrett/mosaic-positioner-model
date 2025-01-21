@@ -49,7 +49,13 @@ class motor_positions(NamedTuple):
 
 class positioner(object):
     """
-    Model of a MOSAIC fiber positioner
+    Model of a MOSAIC fiber positioner.
+
+    The orientation of the two arms is called the "pose" and the pose can
+    be controlled, either by changing the positions of the axes motors
+    or by setting it directly. The user is responsible for keeping the motor
+    positions and the pose syncronised except when moving the motors along
+    a path with the move method.
 
     Attributes
     ----------
@@ -389,18 +395,6 @@ class positioner(object):
         self._build_collision_array(matrix, 1, 1)
 
 
-    def directions(self, t_end):
-        t1_0 = self.theta_1
-        t1_1 = t_end[0]
-        # Assume all angles in the range -pi < t < pi
-        dt1 = t1_1 - t1_0
-        t2_0 = self.theta_2+dt1
-        t2_1 = t_end[1]
-        dt2 = t2_1 - t2_0
-        print(dt1, dt2)
-        return dt1, dt2
-
-
     def exists(self):
         """
         Positioner exists
@@ -511,7 +505,7 @@ class positioner(object):
 
     def move_to_target(self, axes=None):
         """
-        move to the assigned target
+        Move to the assigned target and set the on_target attribute.
 
         Arguments
         ---------
@@ -541,7 +535,8 @@ class positioner(object):
 
     def move_to_pose(self, destination_pose, axes=None):
         """
-        Move to the specified pose
+        Move to the specified pose. If the pose is the target pose
+        the caller is responsible for setting the on_target attribute.
 
         Arguments
         ---------
@@ -562,7 +557,9 @@ class positioner(object):
     def move(self, axes=None):
         """
         Move the position along the motor paths checking for
-        a collision at each step.
+        a collision at each step. If the move puts the fiber on the
+        target the caller is responsible for setting the on_target
+        attribute.
 
         Arguments
         ---------

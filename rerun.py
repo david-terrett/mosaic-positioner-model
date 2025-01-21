@@ -1,4 +1,10 @@
 # -*- coding utf-8 -*-
+if __name__ == "__main__" and __package__ is None:
+    __package__ = "positioner_model"
+
+from matplotlib import pyplot as plt
+
+from .test_setup import test_setup
 
 def rerun(fp, istart, pause=True):
     for i in fp.positioners:
@@ -69,3 +75,11 @@ def _next(pause):
         if inp == "n":
             return False
     return True
+
+if __name__ == "__main__":
+    fp = test_setup()
+    plt.interactive(True)
+    fp.plot()
+    rerun(fp, 0, False)
+    plt.interactive(False)
+    plt.show()
