@@ -1,4 +1,5 @@
 # -*- coding utf-8 -*-
+from enum import Enum
 from math import acos
 from math import atan2
 from math import cos
@@ -19,6 +20,12 @@ from .geometry_utilities import move_polygon
 from .geometry_utilities import rotate_point
 from .geometry_utilities import rotate_polygon
 
+class target_type(Enum):
+    IR = 0
+    VIS_LR = 1
+    VIS_HR = 2
+    IFU = 3
+
 class positioner(object):
     """
     Model of a MOSAIC fiber positioner
@@ -33,6 +40,12 @@ class positioner(object):
         position of second axis in focal plane
     id : any
         an identifier for the positioner
+    ifu : point
+        location of IFU pickoff mirror in focal plane
+    ifu_max_r : float
+        The maximum reach of the positioner with the IFU
+    ifu_min_r : float
+        The minimum reach of the positioner with the IFU
     ir_fiber : point
         location of IR fiber in focal plane
     ir_max_r : float
@@ -137,11 +150,13 @@ class positioner(object):
         # Fibre positions
         ir_fiber = point(4.0, -57.0)
         vis_fiber = point(-4.0, -57.0)
+        ifu = point(0.0, -l1/2.0)
 
         # Move arm 2 onto its axis position
         arm_2 = move_polygon(arm_2, axis_2.x(), axis_2.y())
         ir_fiber = move_point(ir_fiber, axis_2.x(), axis_2.y())
         vis_fiber = move_point(vis_fiber, axis_2.x(), axis_2.y())
+        ifu = move_point(ifu, axis_2.x(), axis_2.y())
 
         # Move everything to the positioner's position
         self._axis_1_base = move_point(axis_1, position.x(), position.y())
@@ -150,6 +165,7 @@ class positioner(object):
         self._arm_2_base = move_polygon(arm_2, position.x(), position.y())
         self._ir_fiber_base = move_point(ir_fiber, position.x(), position.y())
         self._vis_fiber_base = move_point(vis_fiber, position.x(), position.y())
+        self._ifu_base = move_point(ifu, position.x(), position.y())
 
         # Set the axes to the angles we used when defining the geometry
         self._theta_1_base = pi/2.0
@@ -160,6 +176,7 @@ class positioner(object):
         self._axis_1_to_axis_2 = distance(axis_1, axis_2)
         self._axis_2_to_ir_fiber = distance(axis_2, ir_fiber)
         self._axis_2_to_vis_fiber = distance(axis_2, vis_fiber)
+        self._axis_2_to_ifu = distance(axis_2, ifu)
 
         # Define the maximum and minimum radius the fibre can reach from the
         # arm 1 axis
@@ -167,6 +184,8 @@ class positioner(object):
         self.ir_min_r = fabs(self._axis_2_to_ir_fiber - self._axis_1_to_axis_2)
         self.vis_max_r = self._axis_1_to_axis_2 + self._axis_2_to_vis_fiber
         self.vis_min_r = fabs(self._axis_2_to_vis_fiber - self._axis_1_to_axis_2)
+        self.ifu_max_r = self._axis_1_to_axis_2 + self._axis_2_to_ifu
+        self.ifu_min_r = fabs(self._axis_2_to_ifu - self._axis_1_to_axis_2)
 
         # Define the angle offsets between the arm 1 and axis 2 and arm 2
         # and the fiber.
@@ -175,6 +194,8 @@ class positioner(object):
                                             ir_fiber.x() - axis_2.x()) + pi / 2.0
         self._vis_arm_2_angle_offset = atan2(vis_fiber.y() - axis_2.y(),
                                              vis_fiber.x() - axis_2.x()) + pi / 2.0
+        self._ifu_arm_2_angle_offset = atan2(ifu.y() - axis_2.y(),
+                                             ifu.x() - axis_2.x()) + pi / 2.0
 
         # Park the positioner
         self.tpose = [0., pi]
@@ -198,16 +219,22 @@ class positioner(object):
         """
         reachable = False
         if t.ir and self.is_ir():
-            if self.can_reach(t.position, True):
-                self.targets[t] = self._arm_angles(t.position, True)
+            if self.can_reach(t.position, target_type.IR):
+                self.targets[t] = self._arm_angles(t.position, target_type.IR)
                 reachable = True
         if t.vis_lr and self.is_vis_lr():
-            if self.can_reach(t.position, False):
-                self.targets[t] = self._arm_angles(t.position, False)
+            if self.can_reach(t.position, target_type.VIS_LR):
+                self.targets[t] = self._arm_angles(t.position,
+                                                   target_type.VIS_LR)
                 reachable = True
         if t.vis_hr and self.is_vis_hr():
-            if self.can_reach(t.position, False):
-                self.targets[t] = self._arm_angles(t.position, False)
+            if self.can_reach(t.position, target_type.VIS_HR):
+                self.targets[t] = self._arm_angles(t.position,
+                                                   target_type.VIS_HR)
+                reachable = True
+        if t.ifu and self.is_ifu():
+            if self.can_reach(t.position, target_type.IFU):
+                self.targets[t] = self._arm_angles(t.position, target_type.IFU)
                 reachable = True
         if reachable:
             t.reachable.append(self)
@@ -244,7 +271,7 @@ class positioner(object):
         self.alt = alt
 
 
-    def can_reach(self, p, ir):
+    def can_reach(self, p, targ_type):
         """
         Fiber can reach point
 
@@ -252,8 +279,8 @@ class positioner(object):
         ----------
         p : point
             position to test
-        ir : bool
-            if true test IR fiber otherwise test VIS
+        targ_type : target_type
+            type of target
 
         Returns
         -------
@@ -264,12 +291,16 @@ class positioner(object):
               (p.x() - self._axis_1_base.x()) +
               (p.y() - self._axis_1_base.y()) *
               (p.y() - self._axis_1_base.y()))
-        if ir:
+        if targ_type == target_type.IR:
             return (r2 < self.ir_max_r * self.ir_max_r and
                     r2 > self.ir_min_r * self.ir_min_r)
-        else:
+        elif (targ_type == target_type.VIS_LR or
+              targ_type == target_type.VIS_HR):
             return (r2 < self.vis_max_r * self.vis_max_r and
                     r2 > self.vis_min_r * self.vis_min_r)
+        elif targ_type == target_type.IFU:
+            return (r2 < self.ifu_max_r * self.ifu_max_r and
+                    r2 > self.ifu_min_r * self.ifu_min_r)
 
 
     def clear_targets(self):
@@ -304,6 +335,18 @@ class positioner(object):
         self._build_collision_array(matrix, 1, 0)
         self._build_collision_array(matrix, 0, 1)
         self._build_collision_array(matrix, 1, 1)
+
+
+    def is_ifu(self):
+        """
+        Has an IFU pickoff mirror
+
+        Returns
+        -------
+        : bool
+            True if the positioner has an IFU pickoff mirror
+        """
+        return True
 
 
     def is_ir(self):
@@ -417,6 +460,7 @@ class positioner(object):
             plt.draw()
             plt.pause(0.002)
         return
+
 
     def step_one_pose(self,figure,axes,forward=True):
         '''
@@ -611,6 +655,8 @@ class positioner(object):
                              self.axis_2.y() - self._axis_2_base.y())
         vis_fiber = move_point(self._vis_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
                              self.axis_2.y() - self._axis_2_base.y())
+        ifu = move_point(self._ifu_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
 
         # Rotate arm 2
         c = cos(theta[1] - self._theta_2_base)
@@ -618,6 +664,7 @@ class positioner(object):
         self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
         self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
         self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
+        self.ifu = rotate_point(ifu, self.axis_2, c, s)
 
 
     def set_next_pose(self, i):
@@ -651,17 +698,20 @@ class positioner(object):
         raise RuntimeError("no position found without a collision")
 
 
-    def _arm_angles(self, p, ir):
+    def _arm_angles(self, p, targ_type):
 
         # Bearing of target
         t = atan2(p.y() - self._axis_1_base.y(), p.x() - self._axis_1_base.x())
 
         # Solve for the angles of a triangle formed by axis 1 (A), axis 2 (B)
         # and the fiber (C)
-        if ir:
+        if targ_type == target_type.IR:
             a = self._axis_2_to_ir_fiber
-        else:
+        elif (targ_type == target_type.VIS_LR or
+              targ_type == target_type.VIS_HR):
             a = self._axis_2_to_vis_fiber
+        elif targ_type == target_type.IFU:
+            a = self._axis_2_to_ifu
         b = distance(self._axis_1_base, p)
         c = self._axis_1_to_axis_2
         A = acos((b * b + c * c - a * a)/(2.0 * b * c))
@@ -675,15 +725,17 @@ class positioner(object):
         arm_1_2 = t + A
         arm_2_2 = arm_1_2 - pi + B
 
-        if ir:
+        if targ_type == target_type.IR:
             arm_2_angle_offset = self._ir_arm_2_angle_offset
-        else:
+        elif targ_type == target_type.VIS_LR or targ_type == target_type.VIS_HR:
             arm_2_angle_offset = self._vis_arm_2_angle_offset
+        elif targ_type == target_type.IFU:
+            arm_2_angle_offset = self._ifu_arm_2_angle_offset
         return ([arm_1_1 - self._arm_1_angle_offset, arm_2_1 - arm_2_angle_offset],
                 [arm_1_2 - self._arm_1_angle_offset, arm_2_2 - arm_2_angle_offset])
 
 
-    def _arm_angles_to_pose(self,theta):
+    def _arm_angles_to_pose(self, theta):
         # need to wrap angles here
         pose = theta.copy()
         pose[1] = self._wrap_angle_pmpi(theta[1]+theta[0]+pi)
@@ -726,7 +778,7 @@ class positioner(object):
 
 
 
-    def _pose_to_arm_angles(self,theta):
+    def _pose_to_arm_angles(self, theta):
         # need to wrap angles here
         t = self._wrap_angle_pmpi(theta)
         arm_angles=t.copy()

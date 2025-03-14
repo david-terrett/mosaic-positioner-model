@@ -3,9 +3,10 @@ from random import random
 
 from .target import target
 
-def add_random_targets(fp, density, ir=False, vis_lr=False, vis_hr=False):
+def add_random_targets(fp, density, ir=False, vis_lr=False, vis_hr=False,
+                       ifu=False):
     """
-    Create targets in random positioners and add them to the focal plane
+    Create targets in random positions and add them to the focal plane
 
     Parameters
     ---------
@@ -19,6 +20,8 @@ def add_random_targets(fp, density, ir=False, vis_lr=False, vis_hr=False):
         create VIS low res targets
     vis_hr : bool
         create VIS high res targets
+    ifu : bool
+        create IFU targets
     """
 
     # Plate scale (mm/arcsec)
@@ -35,5 +38,6 @@ def add_random_targets(fp, density, ir=False, vis_lr=False, vis_hr=False):
     for _ in range(0, n):
         x = fp.x_min + random() * (fp.x_max - fp.x_min)
         y = fp.y_min + random() * (fp.y_max - fp.y_min)
-        targets.append(target(x, y, ir=ir, vis_lr=vis_lr, vis_hr=vis_hr))
+        targets.append(target(x, y, ir=ir, vis_lr=vis_lr, vis_hr=vis_hr,
+                              ifu=ifu))
     fp.add_targets(targets)
