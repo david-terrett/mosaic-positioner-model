@@ -10,26 +10,23 @@ class target(object):
 
     Attributes
     ----------
+        ifu : bool
+            Target is an IFU target
         ir : bool
             Target is an IR target
-
         position : point
             Position of target in the focal plane
-
         positioner : positioner
             The positioner assigned to this target (can be None)
-
         reachable : [positioner]
             A list of the positioners that can reach this target
-
         vis_hr : bool
             Target is a high resolution visible target
-
         vis_lr : bool
             Target is a low resolution visible target
     """
 
-    def __init__(self, x, y, ir=False, vis_lr=False, vis_hr=False):
+    def __init__(self, x, y, ir=False, vis_lr=False, vis_hr=False, ifu=False):
         """
         Parameters
         ----------
@@ -50,3 +47,4 @@ class target(object):
         self.ir = ir
         self.vis_lr = vis_lr
         self.vis_hr = vis_hr
+        self.ifu = ifu

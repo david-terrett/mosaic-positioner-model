@@ -474,6 +474,8 @@ class focal_plane(object):
                 color = 'red'
             elif t.ir and t.vis_lr or t.vis_hr:
                 color = 'brown'
+            elif t.ifu:
+                color = 'black'
             self._target_markers.append(self.axes.plot(t.position.x(),
                                         t.position.y(), '.', color=color,
                                         markersize=1.0))
