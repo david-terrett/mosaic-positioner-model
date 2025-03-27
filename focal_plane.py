@@ -153,6 +153,7 @@ class focal_plane(object):
         # No targets allocated
         self.ir_allocated = 0
         self.vis_allocated = 0
+        self.ifu_allocated = 0
         self.positioned = 0
 
         # empty list of targets
@@ -416,7 +417,9 @@ class focal_plane(object):
         print(f"there are {len(self.targets)} targets in the field")
         print(f"{self.ir_allocated} IR targets assigned to a positioner")
         print(f"{self.vis_allocated} VIS targets assigned to a positioner")
-        unalloc = len(self.positioners) - self.ir_allocated - self.vis_allocated
+        print(f"{self.ifu_allocated} IFU targets assigned to a positioner")
+        unalloc = (len(self.positioners) - self.ir_allocated -
+                   self.vis_allocated - self.ifu_allocated)
         print(f"{unalloc} positioners out of {len(self.positioners)} don't have a target allocated")
         unreachable = 0
         one_target = 0
@@ -511,12 +514,16 @@ class focal_plane(object):
         if current_target is not None:
             if current_target.ir:
                 self.ir_allocated -= 1
-            else:
+            elif current_target.vis_lr or current_target.vis_hr:
                 self.vis_allocated -= 1
+            else:
+                self.ifu_allocated -= 1
         if t.ir:
             self.ir_allocated += 1
-        else:
+        elif t.vis_lr or t.vis_hr:
             self.vis_allocated += 1
+        else:
+            self.ifu_allocated += 1
         pos.in_position = False # Assigned a target, but haven't got there yet
         if True: # (self.live_view):
             # set up the move sequence
