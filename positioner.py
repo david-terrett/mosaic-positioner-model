@@ -40,26 +40,6 @@ class target_type(Enum):
     VIS_HR = 2
     IFU = 3
 
-class positioner(object):
-    """
-    Motor positions that pose a positioner
-
-    Attributes
-    ----------
-    alpha: float
-        alpha motor position in the range -180/180
-    alpha_alt: float
-        alternate alpha motor position or None
-    beta: float
-        beta motor position in the range -180/180
-    beta_alt: float
-        alternate beta motor position or None
-    """
-    alpha: float
-    alpha_alt: float
-    beta: float
-    beta_alt: float
-
 
 class positioner(object):
     """
