@@ -199,10 +199,17 @@ class positioner(object):
             yy = -l1-l2*sin(t)
             arm_2.append(point(xx,yy))
         arm_2.append(point(w, -l1))
-        arm_2.append(point(w, -l1/2.0 + 10.0))
-        arm_2.append(point(w + 28.0, -l1/2.0 + 10.0))
-        arm_2.append(point(w + 28.0, -l1/2.0 - 10.0))
+        #arm_2.append(point(w, -l1/2.0 - 10.0))
+        #arm_2.append(point(w + 28.0, -l1/2.0 - 10.0))
+        #arm_2.append(point(w + 28.0, -l1/2.0 + 10.0))
+        #arm_2.append(point(w, -l1/2.0 + 10.0))
         arm_2.append(point(w, -l1/2.0 - 10.0))
+        for i in range(0,semicirc_points+1):
+            t = pi * float(i)/semicirc_points
+            xx = w + 8.0 + 10.0 * sin(pi - t)
+            yy = - l1/2.0 + 10.0 * cos(pi - t)
+            arm_2.append(point(xx,yy))
+        arm_2.append(point(w, -l1/2.0 + 10.0))
         arm_2.append(point(w, 0))
 
         # Fibre positions

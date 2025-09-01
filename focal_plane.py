@@ -107,6 +107,12 @@ class focal_plane(object):
                         if sep2 <= self._max_sep2:
                             p.neighbours.append(q)
 
+        # No targets allocated
+        self.ir_allocated = 0
+        self.vis_allocated = 0
+        self.ifu_allocated = 0
+        self.positioned = 0
+
         # empty list of targets
         self.targets = []
 
@@ -348,6 +354,12 @@ class focal_plane(object):
         Print stuff about the state of the positioner
         """
         print(f"there are {len(self.targets)} targets in the field")
+        print(f"{self.ir_allocated} IR targets assigned to a positioner")
+        print(f"{self.vis_allocated} VIS targets assigned to a positioner")
+        print(f"{self.ifu_allocated} IFU targets assigned to a positioner")
+        unalloc = (len(self.positioners) - self.ir_allocated -
+                   self.vis_allocated - self.ifu_allocated)
+        print(f"{unalloc} positioners out of {len(self.positioners)} don't have a target allocated")
         unreachable = 0
         one_target = 0
         on_target = 0
