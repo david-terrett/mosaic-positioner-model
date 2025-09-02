@@ -2,13 +2,16 @@
 
 from ast import literal_eval
 import csv
+from math import cos
 from math import floor
 from math import inf
-from math import pi
+from math import radians
+from math import sin
 from math import sqrt
 import matplotlib.pyplot as plt
 import numpy as np
 
+from .beam_steering_mirror import beam_steering_mirror
 from .geometry import point
 from .positioner import positioner
 from .target import target
@@ -19,6 +22,7 @@ class focal_plane(object):
 
     Attributes
     ----------
+        beam_steering_mirrors : [beam_steering_mirror]
         positioners : [positioner]
             List of the positioners in the focal plane
         targets : [targets]
@@ -106,6 +110,18 @@ class focal_plane(object):
                         sep2 = dx*dx+dy*dy
                         if sep2 <= self._max_sep2:
                             p.neighbours.append(q)
+
+        # Build the list of beam steering mirrors
+        self.beam_steering_mirrors = []
+        r = 1300.0
+        self._add_bsm(r, 45.0 - 8.5)
+        self._add_bsm(r, 45.0 + 8.5)
+        self._add_bsm(r, -45.0 - 8.5)
+        self._add_bsm(r, -45.0 + 8.5)
+        self._add_bsm(r, 135.0 - 8.5)
+        self._add_bsm(r, 135.0 + 8.5)
+        self._add_bsm(r, -135.0 - 8.5)
+        self._add_bsm(r, -135.0 + 8.5)
 
         # No targets allocated
         self.ir_allocated = 0
@@ -313,9 +329,14 @@ class focal_plane(object):
             self.figure = plt.figure()
             self.axes = self.figure.subplots()
         self.figure.gca().set_aspect('equal')
-        self.figure.gca().axis([-1300.0, 1300.0, -1000.0, 1000.0])
+        self.figure.gca().axis([-1300.0, 1300.0, -1300.0, 1300.0])
         for p in self.positioners:
             p.plot(self.axes)
+
+        # Plot the beam steering mirrors
+        for bsm in self.beam_steering_mirrors:
+            bsm.plot(self.axes)
+
 
         # Plot the targets
         if self.figure:
@@ -458,6 +479,10 @@ class focal_plane(object):
                 self._add_positioner(x, y + 0.5)
             for y in range(0, floor(n/2.0)):
                 self._add_positioner(x, -y - 0.5)
+
+    def _add_bsm(self, r, a):
+        self.beam_steering_mirrors.append(beam_steering_mirror(
+            point(r * cos(radians(a)), r * sin(radians(a)))))
 
 
     def _add_positioner(self, i, j):
