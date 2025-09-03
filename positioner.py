@@ -89,13 +89,13 @@ class positioner(object):
         Pose that positions the fiber on the assigned target
     targets : dict of targets
         A dictionary of reachable targets indexed by target
-    theta_2 : float
-        Angle of lower arm relative to x axis (radians)
     type : int
         type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
         6: VIS+VIS-HR, 8: Camera (i.e. a bit mask)
     theta_1 : float
         Angle of upper arm relative to x axis (radians)
+    theta_2 : float
+        Angle of lower arm relative to x axis (radians)
     vis_fiber : point
         location of VIS fiber in focal plane
     vis_max_r : float
@@ -122,6 +122,7 @@ class positioner(object):
         self.blocker = None
         self.alpha_motor = motor()
         self.beta_motor = motor()
+        self.gamma_motor = motor()
         self.neighbours = []
         self.on_target = False
         self.target = None
@@ -195,7 +196,7 @@ class positioner(object):
         # Fibre positions
         ir_fiber = point(4.0, -57.0)
         vis_fiber = point(-4.0, -57.0)
-        ifu = point(0.0, -l1/2.0)
+        ifu = point(20.0, -l1/2.0)
 
         # Move arm 2 onto its axis position
         arm_2 = move_polygon(arm_2, axis_2.x(), axis_2.y())
@@ -245,6 +246,7 @@ class positioner(object):
         # Set the initial position
         self.alpha_motor.set(0.0)
         self.beta_motor.set(0.0)
+        self.gamma_motor.set(0.0)
         self.set_pose_from_motors()
 
 
@@ -669,14 +671,41 @@ class positioner(object):
             self._patches.append(axes.add_patch(Ellipse(xy=(self.ir_fiber.x(),
                                                           self.ir_fiber.y()),
                                               width=5, height=5, angle=0,
-                                              facecolor="none",
+                                              facecolor='none',
                                               edgecolor='red')))
             self._patches.append(axes.add_patch(Ellipse(xy=(self.vis_fiber.x(),
                                                           self.vis_fiber.y()),
                                               width=5, height=5, angle=0,
-                                              facecolor="none",
+                                              facecolor='none',
                                               edgecolor='red')))
 
+            # Draw the direction the IFU pickoff mirror is pointing
+            a = self.theta_2 + radians(self.gamma_motor.position)
+            x = self.ifu.x() + 10.0 * cos(a)
+            y = self.ifu.y() + 10.0 * sin(a)
+            self._d.append(axes.plot([self.ifu.x(), x], [self.ifu.y(), y],
+                           color='black'))
+
+
+    def point_ifu(self, obj):
+        """
+        Point the IFU pickoff mirror at an object (anything with a position
+        method)
+
+        Parameters
+        ----------
+        obj : any
+            Object.
+        """
+        # Mirror angle relative to x axis
+        a = atan2(obj.position.y() - self._ifu_base.y(),
+                  obj.position.x() - self._ifu_base.x())
+
+        # Angle relative to arm 2
+        a = a - self.theta_2
+
+        # Set motor
+        self.gamma_motor.set(degrees(a))
 
     def reverse_last_move(self, axes=None):
         """
@@ -928,6 +957,8 @@ class positioner(object):
                              self.axis_2.y() - self._axis_2_base.y())
         vis_fiber = move_point(self._vis_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
                              self.axis_2.y() - self._axis_2_base.y())
+        ifu = move_point(self._ifu_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
 
         # Rotate arm 2
         c = cos(self.theta_2 - self._theta_2_base)
@@ -935,6 +966,8 @@ class positioner(object):
         self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
         self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
         self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
+        self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
+        self.ifu = rotate_point(ifu, self.axis_2, c, s)
 
 
 

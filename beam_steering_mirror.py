@@ -80,7 +80,7 @@ class beam_steering_mirror(object):
 
         Parameters
         ----------
-        t : target
+        t : any
             Target position
         """
 
