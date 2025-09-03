@@ -55,15 +55,20 @@ class beam_steering_mirror(object):
             d[0].remove()
         self._d = []
 
-        # Draw the mirror as a rectangle
-        x = 20.0
-        y = 100.0
+        # Draw the mirror as a hexagon
+        x = 100.0
+        l1 = x / 2.0
+        l2 = x / 2.0 + sqrt(0.5) * x
         outline = polygon()
-        outline.append(point(self.position.x() + x, self.position.y() + y))
-        outline.append(point(self.position.x() + x, self.position.y() - y))
-        outline.append(point(self.position.x() - x, self.position.y() - y))
-        outline.append(point(self.position.x() - x, self.position.y() + y))
-        outline.append(point(self.position.x() + x, self.position.y() + y))
+        outline.append(point(self.position.x() + l1, self.position.y() + l2))
+        outline.append(point(self.position.x() + l2, self.position.y() + l1))
+        outline.append(point(self.position.x() + l2, self.position.y() - l1))
+        outline.append(point(self.position.x() + l1, self.position.y() - l2))
+        outline.append(point(self.position.x() - l1, self.position.y() - l2))
+        outline.append(point(self.position.x() - l2, self.position.y() - l1))
+        outline.append(point(self.position.x() - l2, self.position.y() + l1))
+        outline.append(point(self.position.x() - l1, self.position.y() + l2))
+        outline.append(point(self.position.x() + l1, self.position.y() + l2))
 
         # Rotate into position
         c = cos(radians(self.mirror_motor.position))
@@ -72,6 +77,14 @@ class beam_steering_mirror(object):
 
         # draw outline
         self._d.append(axes.plot(outline.x(), outline.y(), color='gray'))
+
+        # Add an arrow pointing at the target
+        a = radians(self.mirror_motor.position)
+        x = self.position.x() + 150.0 * cos(a)
+        y = self.position.y() + 150.0 * sin(a)
+        self._d.append(axes.plot([self.position.x(), x], [self.position.y(), y],
+                       color='grey'))
+
 
 
     def point(self, t):
