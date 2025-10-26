@@ -83,7 +83,7 @@ class positioner(object):
         A list of neighbouring positioners
     on_target : bool
         True if the positioner's fiber is positioned on the target
-    origin : point
+    position : point
         Position of the lower arm axis in the focal plane
     target_pose : pose
         Pose that positions the fiber on the assigned target
@@ -116,7 +116,7 @@ class positioner(object):
         ident : any
             Identifier for the positioner
         """
-        self.origin = position
+        self.position = position
         self.id = ident
 
         self.blocker = None
@@ -196,7 +196,7 @@ class positioner(object):
         # Fibre positions
         ir_fiber = point(4.0, -57.0)
         vis_fiber = point(-4.0, -57.0)
-        ifu = point(20.0, -l1/2.0)
+        ifu = point(0.0, -l1/2.0)
 
         # Move arm 2 onto its axis position
         arm_2 = move_polygon(arm_2, axis_2.x(), axis_2.y())
@@ -205,13 +205,19 @@ class positioner(object):
         ifu = move_point(ifu, axis_2.x(), axis_2.y())
 
         # Move everything to the positioner's position
-        self._axis_1_base = move_point(axis_1, self.origin.x(), self.origin.y())
-        self._arm_1_base = move_polygon(arm_1, self.origin.x(), self.origin.y())
-        self._axis_2_base = move_point(axis_2, self.origin.x(), self.origin.y())
-        self._arm_2_base = move_polygon(arm_2, self.origin.x(), self.origin.y())
-        self._ir_fiber_base = move_point(ir_fiber, self.origin.x(), self.origin.y())
-        self._vis_fiber_base = move_point(vis_fiber, self.origin.x(), self.origin.y())
-        self._ifu_base = move_point(ifu, self.origin.x(), self.origin.y())
+        self._axis_1_base = move_point(axis_1, self.position.x(),
+                                       self.position.y())
+        self._arm_1_base = move_polygon(arm_1, self.position.x(),
+                                        self.position.y())
+        self._axis_2_base = move_point(axis_2, self.position.x(),
+                                       self.position.y())
+        self._arm_2_base = move_polygon(arm_2, self.position.x(),
+                                        self.position.y())
+        self._ir_fiber_base = move_point(ir_fiber, self.position.x(),
+                                         self.position.y())
+        self._vis_fiber_base = move_point(vis_fiber, self.position.x(),
+                                          self.position.y())
+        self._ifu_base = move_point(ifu, self.position.x(), self.position.y())
 
         # Set the axes to the angles we used when defining the geometry
         self._theta_1_base = pi/2.0
@@ -706,6 +712,7 @@ class positioner(object):
 
         # Set motor
         self.gamma_motor.set(degrees(a))
+
 
     def reverse_last_move(self, axes=None):
         """

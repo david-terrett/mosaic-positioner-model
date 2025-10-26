@@ -5,8 +5,7 @@ from .geometry import point
 class target(object):
     """
     A target is a focal plane position, the positioner it is allocated
-    to (if any) and the two sets of arm angles the put the fiber onto
-    the target.
+    to (if any) and the type of fibre it can be allocated to.
 
     Attributes
     ----------
@@ -28,6 +27,9 @@ class target(object):
 
     def __init__(self, x, y, ir=False, vis_lr=False, vis_hr=False, ifu=False):
         """
+        A newly created target is not allocated to a positioner and has an empy
+        list of positioners that can reach it.
+
         Parameters
         ----------
         x : float

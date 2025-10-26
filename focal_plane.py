@@ -18,11 +18,13 @@ from .target import target
 
 class focal_plane(object):
     """
-    Model of the MOSAIC focal plane
+    Model of the MOSAIC focal plane. It contains positioners and IFU
+    beam steering mirrors.
 
     Attributes
     ----------
         beam_steering_mirrors : [beam_steering_mirror]
+            List of beam steering mirrors.
         positioners : [positioner]
             List of the positioners in the focal plane
         targets : [targets]
@@ -45,28 +47,6 @@ class focal_plane(object):
         self.x_min = -self.x_max
         self.y_max = 12.0 * self._dy
         self.y_min = -self.y_max
-
-        types = [3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
-                       6,3,1,6,3,1,1,3,6,1,3,6,                # 12
-                       6,3,1,6,3,1,1,3,6,1,3,6,                # 12
-                       3,1,6,3,1,6,1,6,1,3,6,1,3,              # 13
-                       3,1,6,3,1,6,1,6,1,3,6,1,3,              # 13
-                       6,3,1,6,3,1,6,1,1,3,6,1,3,6,1,1,        # 16
-                       6,3,1,6,3,1,6,1,1,3,6,1,3,6,1,1,        # 16
-                       3,1,6,3,1,6,3,1,6,1,6,1,3,6,1,3,6,1,1,  # 19
-                       3,1,6,3,1,6,3,1,6,1,6,1,3,6,1,3,6,1,1,  # 19
-                       6,3,1,6,3,1,6,3,1,1,3,6,1,3,6,1,3,0,    # 18
-                       6,3,1,6,3,1,6,3,1,1,3,6,1,3,6,1,3,0,    # 18
-                       3,1,6,3,1,6,3,1,0,6,1,3,6,1,3,6,1,      # 17
-                       3,1,6,3,1,6,3,1,0,6,1,3,6,1,3,6,1,      # 17
-                       6,1,3,6,1,3,2,1,1,3,6,1,3,2,1,1,        # 16
-                       6,1,3,6,1,3,2,1,1,3,6,1,3,2,1,1,        # 16
-                       0,0,0,1,1,2,1,0,0,1,2,1,1,              # 13
-                       0,0,0,1,1,2,1,0,0,1,2,1,1,              # 13
-                       0,0,0,0,1,1,0,0,0,1,1,0,                # 12
-                       0,0,0,0,1,1,0,0,0,1,1,0,                # 12
-                       0,0,0,1,1,0,0,1,0,                      # 9
-                       0,0,0,1,1,0,0,1,0 ]                     # 9
 
     # Build the list of positioners
         self.positioners = []
@@ -93,20 +73,41 @@ class focal_plane(object):
         self._add_column(-10, 9)
 
         # Set the positioner types
+        types = [3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
+                 6,3,1,6,3,1,1,3,6,1,3,6,                # 12
+                 6,3,1,6,3,1,1,3,6,1,3,6,                # 12
+                 3,1,6,3,1,6,1,6,1,3,6,1,3,              # 13
+                 3,1,6,3,1,6,1,6,1,3,6,1,3,              # 13
+                 6,3,1,6,3,1,6,1,1,3,6,1,3,6,1,1,        # 16
+                 6,3,1,6,3,1,6,1,1,3,6,1,3,6,1,1,        # 16
+                 3,1,6,3,1,6,3,1,6,1,6,1,3,6,1,3,6,1,1,  # 19
+                 3,1,6,3,1,6,3,1,6,1,6,1,3,6,1,3,6,1,1,  # 19
+                 6,3,1,6,3,1,6,3,1,1,3,6,1,3,6,1,3,0,    # 18
+                 6,3,1,6,3,1,6,3,1,1,3,6,1,3,6,1,3,0,    # 18
+                 3,1,6,3,1,6,3,1,0,6,1,3,6,1,3,6,1,      # 17
+                 3,1,6,3,1,6,3,1,0,6,1,3,6,1,3,6,1,      # 17
+                 6,1,3,6,1,3,2,1,1,3,6,1,3,2,1,1,        # 16
+                 6,1,3,6,1,3,2,1,1,3,6,1,3,2,1,1,        # 16
+                 0,0,0,1,1,2,1,0,0,1,2,1,1,              # 13
+                 0,0,0,1,1,2,1,0,0,1,2,1,1,              # 13
+                 0,0,0,0,1,1,0,0,0,1,1,0,                # 12
+                 0,0,0,0,1,1,0,0,0,1,1,0,                # 12
+                 0,0,0,1,1,0,0,1,0,                      # 9
+                 0,0,0,1,1,0,0,1,0 ]                     # 9
         for pos in self.positioners:
             pos.type = types[pos.id]
 
         # Build list of neighbours for each positioner ignoring ones that
         # are absent
         for p in self.positioners:
-            xp = p.origin.x()
-            yp = p.origin.y()
+            xp = p.position.x()
+            yp = p.position.y()
             p.neighbours = []
             if p.exists():
                 for q in self.positioners:
                     if p is not q and q.exists():
-                        dx = xp - q.origin.x()
-                        dy = yp - q.origin.y()
+                        dx = xp - q.position.x()
+                        dy = yp - q.position.y()
                         sep2 = dx*dx+dy*dy
                         if sep2 <= self._max_sep2:
                             p.neighbours.append(q)
@@ -123,13 +124,13 @@ class focal_plane(object):
         self._add_bsm(r, -135.0 - 8.5)
         self._add_bsm(r, -135.0 + 8.5)
 
-        # No targets allocated
+        # Initially, no targets allocated
         self.ir_allocated = 0
         self.vis_allocated = 0
         self.ifu_allocated = 0
         self.positioned = 0
 
-        # empty list of targets
+        # List of targets is empty
         self.targets = []
 
         # No plot yet
@@ -323,7 +324,7 @@ class focal_plane(object):
 
     def plot(self):
         """
-        Plot positioners
+        Plot positioners and beam steering mirrors
         """
         if not self.figure:
             self.figure = plt.figure()
