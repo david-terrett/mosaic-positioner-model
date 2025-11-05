@@ -24,5 +24,6 @@ install(FILES
     simple_path_planner.py
     target.py
     test_setup.py
+    resolve_conflict.py
     DESTINATION positioner_model
 )

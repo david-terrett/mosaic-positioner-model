@@ -55,7 +55,7 @@ use with anaconda on some systems (e.g. MACOS).
     >>> # Create some targets and compute which are reachable by each
     >>> # positioner. density is per square arcmin.
     >>> add_random_targets(fp, density=5, ir=True)
-    >>> add_random_targets(fp, density=5, vis=True)
+    >>> add_random_targets(fp, density=5, vis_lr=True)
 
     >>> # See how many targets were created
     >>> print(len(fp.targets))
@@ -68,8 +68,12 @@ use with anaconda on some systems (e.g. MACOS).
 
     >>> # Plot
     >>> import matplotlib.pyplot as plt
+    >>> plt.interactive(True)
     >>> fp.plot()
     >>> plt.show()
+
+    >>> # Zoom to a particular positioner
+    >>> fp.positioners[99].zoom_to(fp.figure)
 
     >>> # Save the targets to a CSV file
     >>> with open('test'csv', 'w') as f:
