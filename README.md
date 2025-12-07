@@ -16,7 +16,7 @@ boost binary libraries.
 
 To make a local copy of the repository for the first time
 
-    $ git clone github.com:david-terrett/mosaic-positioner-model.git positioner_model
+    $ git clone git@github.com:david-terrett/mosaic-positioner-model.git positioner_model
 
 or, if you don't have a github account
 
