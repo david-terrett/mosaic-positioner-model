@@ -376,12 +376,6 @@ class focal_plane(object):
         Print stuff about the state of the positioner
         """
         print(f"there are {len(self.targets)} targets in the field")
-        print(f"{self.ir_allocated} IR targets assigned to a positioner")
-        print(f"{self.vis_allocated} VIS targets assigned to a positioner")
-        print(f"{self.ifu_allocated} IFU targets assigned to a positioner")
-        unalloc = (len(self.positioners) - self.ir_allocated -
-                   self.vis_allocated - self.ifu_allocated)
-        print(f"{unalloc} positioners out of {len(self.positioners)} don't have a target allocated")
         unreachable = 0
         one_target = 0
         on_target = 0
