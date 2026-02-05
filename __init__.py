@@ -1,6 +1,7 @@
 # -*- coding utf-8 -*-
 
 from .add_random_targets import add_random_targets
+from .allocation_test import allocation_test
 from .demo_allocator import demo_allocator
 from .focal_plane import focal_plane
 from .motor import path

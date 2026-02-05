@@ -12,6 +12,7 @@ add_subdirectory(geometry)
 install(FILES
     __init__.py
     add_random_targets.py
+    allocation_test.py
     beam_steering_mirror.py
     brute_force_allocator.py
     demo_allocator.py
