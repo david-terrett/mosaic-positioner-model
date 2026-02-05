@@ -91,8 +91,8 @@ class positioner(object):
         Target assigned to the positioner
     target_pose : pose
         Pose that positions the fiber on the assigned target
-    targets : dict of targets
-        A dictionary of reachable targets indexed by target
+    targets : dict of poses
+        A dictionary of reachable target poses indexed by target
     type : int
         type can be 0: Not present, 1: NIR-only, 2: VIS-ONLY, 3; NIR+VIS,
         6: VIS+VIS-HR, 8: Camera (i.e. a bit mask)
@@ -955,11 +955,11 @@ class positioner(object):
         for p in self.neighbours:
             other_pose = pose(p.theta_1, p.theta_2)
             n1 = 0
-            for t1 in self.targets:
-                self.set_pose(self.targets[t1][alt1])
+            for t, pose in self.targets.items():
+                self.set_pose(pose[alt1])
                 n2 = 0
-                for t2 in p.targets:
-                    p.set_pose(p.targets[t2][alt2])
+                for t, pose in p.targets.items():
+                    p.set_pose(pose[alt2])
                     matrix[self.id, n1, alt1, np, n2, alt2] = self.collides_with(p)
                     n2 += 1
                 n1 += 1
