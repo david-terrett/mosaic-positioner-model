@@ -57,8 +57,10 @@ class positioner(object):
         alpha axis motor
     arm_1 : polygon
         outline of the lower arm
-    arm_2 : polygon
-        outline of the upper arm
+    arm_2_top : polygon
+        outline of the upper arm top surface
+    arm_2_bot : polygon
+        outline of the upper arm bottom surface
     axis_2 : point
         position of second axis in focal plane
     beta_motor : motor
@@ -85,6 +87,8 @@ class positioner(object):
         True if the positioner's fiber is positioned on the target
     position : point
         Position of the lower arm axis in the focal plane
+    target : target
+        Target assigned to the positioner
     target_pose : pose
         Pose that positions the fiber on the assigned target
     targets : dict of targets
@@ -163,35 +167,53 @@ class positioner(object):
         # Position of arm 2 rotation axis when arm 1 is parked
         axis_2 = point(0.0, 28.5)
 
+        # Outline of arm 2 top surface with axis at 0.0 and angle -90 (so
+        # folded back on top of the lower arm).
+        arm_2_top = polygon()
+        l1 = 57.0
+        l2 = 12.5
+        #for i in range(0,semicirc_points+1):
+        #    t = pi*float(i)/semicirc_points
+        #    xx = l2*cos(t)
+        #    yy = l2*sin(t)
+        #    arm_2_top.append(point(xx,yy))
+        arm_2_top.append(point(-w, -l1/2.0 + 10.0))
+        arm_2_top.append(point(-w, -l1))
+        for i in range(1,semicirc_points+1):
+            t = pi*float(i)/semicirc_points
+            xx = -l2*cos(t)
+            yy = -l1-l2*sin(t)
+            arm_2_top.append(point(xx,yy))
+        arm_2_top.append(point(w, -l1))
+        arm_2_top.append(point(w, -l1/2.0 - 10.0))
+        for i in range(0,semicirc_points+1):
+            t = pi * float(i)/semicirc_points
+            xx = w + 8.0 + 10.0 * sin(pi - t)
+            yy = - l1/2.0 + 10.0 * cos(pi - t)
+            arm_2_top.append(point(xx,yy))
+        arm_2_top.append(point(-w, -l1/2.0 + 10.0))
+        arm_2_top.append(point(w, -l1/2.0 + 10.0))
+        #arm_2_top.append(point(w, 0))
+
         # Outline of arm 2 with axis at 0.0 and angle -90 (so folded
         # back on top of the lower arm).
-        arm_2 = polygon()
+        arm_2_bot = polygon()
         l1 = 57.0
         l2 = 12.5
         for i in range(0,semicirc_points+1):
             t = pi*float(i)/semicirc_points
             xx = l2*cos(t)
             yy = l2*sin(t)
-            arm_2.append(point(xx,yy))
-        arm_2.append(point(-w, -l1))
-        for i in range(1,semicirc_points+1):
-            t = pi*float(i)/semicirc_points
-            xx = -l2*cos(t)
-            yy = -l1-l2*sin(t)
-            arm_2.append(point(xx,yy))
-        arm_2.append(point(w, -l1))
-        #arm_2.append(point(w, -l1/2.0 - 10.0))
-        #arm_2.append(point(w + 28.0, -l1/2.0 - 10.0))
-        #arm_2.append(point(w + 28.0, -l1/2.0 + 10.0))
-        #arm_2.append(point(w, -l1/2.0 + 10.0))
-        arm_2.append(point(w, -l1/2.0 - 10.0))
+            arm_2_bot.append(point(xx,yy))
+        arm_2_bot.append(point(-w, -l1/2.0 -10.0))
+        arm_2_bot.append(point(w, -l1/2.0 - 10.0))
         for i in range(0,semicirc_points+1):
             t = pi * float(i)/semicirc_points
             xx = w + 8.0 + 10.0 * sin(pi - t)
             yy = - l1/2.0 + 10.0 * cos(pi - t)
-            arm_2.append(point(xx,yy))
-        arm_2.append(point(w, -l1/2.0 + 10.0))
-        arm_2.append(point(w, 0))
+            arm_2_bot.append(point(xx,yy))
+        arm_2_bot.append(point(w, -l1/2.0 + 10.0))
+        arm_2_bot.append(point(w, 0))
 
         # Fibre positions
         ir_fiber = point(4.0, -57.0)
@@ -199,7 +221,8 @@ class positioner(object):
         ifu = point(0.0, -l1/2.0)
 
         # Move arm 2 onto its axis position
-        arm_2 = move_polygon(arm_2, axis_2.x(), axis_2.y())
+        arm_2_top = move_polygon(arm_2_top, axis_2.x(), axis_2.y())
+        arm_2_bot = move_polygon(arm_2_bot, axis_2.x(), axis_2.y())
         ir_fiber = move_point(ir_fiber, axis_2.x(), axis_2.y())
         vis_fiber = move_point(vis_fiber, axis_2.x(), axis_2.y())
         ifu = move_point(ifu, axis_2.x(), axis_2.y())
@@ -211,7 +234,9 @@ class positioner(object):
                                         self.position.y())
         self._axis_2_base = move_point(axis_2, self.position.x(),
                                        self.position.y())
-        self._arm_2_base = move_polygon(arm_2, self.position.x(),
+        self._arm_2_top_base = move_polygon(arm_2_top, self.position.x(),
+                                        self.position.y())
+        self._arm_2_bot_base = move_polygon(arm_2_bot, self.position.x(),
                                         self.position.y())
         self._ir_fiber_base = move_point(ir_fiber, self.position.x(),
                                          self.position.y())
@@ -419,7 +444,8 @@ class positioner(object):
         if other is self:
             return False
         return (intersects(self.arm_1, other.arm_1) or
-                intersects(self.arm_2, other.arm_2))
+                intersects(self.arm_2_top, other.arm_2_top) or
+                intersects(self.arm_2_bot, other.arm_2_bot))
 
 
     def build_collision_matrix(self, matrix):
@@ -665,8 +691,11 @@ class positioner(object):
 
             # Draw the arms
             self._d.append(axes.plot(self.arm_1.x(), self.arm_1.y(), color='gray'))
-            self._d.append(axes.plot(self.arm_2.x(), self.arm_2.y(),
+            self._d.append(axes.plot(self.arm_2_top.x(), self.arm_2_top.y(),
                                    color=self._colours[self.type]))
+            self._d.append(axes.plot(self.arm_2_bot.x(), self.arm_2_bot.y(),
+                                   color=self._colours[self.type],
+                                   dashes=(5,5)))
 
             # Draw the axes
             self._d.append(axes.plot(self._axis_1_base.x(), self._axis_1_base.y(),
@@ -958,7 +987,9 @@ class positioner(object):
         self.axis_2 = rotate_point(self._axis_2_base, self._axis_1_base, c, s)
 
         # Move arm 2 to the new axis 2 position.
-        arm_2 = move_polygon(self._arm_2_base, self.axis_2.x() - self._axis_2_base.x(),
+        arm_2_top = move_polygon(self._arm_2_top_base, self.axis_2.x() - self._axis_2_base.x(),
+                             self.axis_2.y() - self._axis_2_base.y())
+        arm_2_bot = move_polygon(self._arm_2_bot_base, self.axis_2.x() - self._axis_2_base.x(),
                              self.axis_2.y() - self._axis_2_base.y())
         ir_fiber = move_point(self._ir_fiber_base, self.axis_2.x() - self._axis_2_base.x(),
                              self.axis_2.y() - self._axis_2_base.y())
@@ -970,7 +1001,8 @@ class positioner(object):
         # Rotate arm 2
         c = cos(self.theta_2 - self._theta_2_base)
         s = sin(self.theta_2 - self._theta_2_base)
-        self.arm_2 = rotate_polygon(arm_2, self.axis_2, c, s)
+        self.arm_2_top = rotate_polygon(arm_2_top, self.axis_2, c, s)
+        self.arm_2_bot = rotate_polygon(arm_2_bot, self.axis_2, c, s)
         self.ir_fiber = rotate_point(ir_fiber, self.axis_2, c, s)
         self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
         self.vis_fiber = rotate_point(vis_fiber, self.axis_2, c, s)
