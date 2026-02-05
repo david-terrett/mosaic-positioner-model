@@ -459,7 +459,7 @@ class positioner(object):
             motor positions
         """
         alpha = degrees(atan2(sin(pose.a), cos(pose.a)))
-        b = pose.b - pose.b - pi
+        b = pose.b - pose.a - pi
         beta = degrees(atan2(sin(b), cos(b)))
 
         if alpha + 360.0 <= self.alpha_motor.high_limit:
