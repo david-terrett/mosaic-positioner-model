@@ -1,4 +1,7 @@
 # -*- coding utf-8 -*-
+import os
+import ezdxf
+
 from enum import Enum
 from math import acos
 from math import atan2
@@ -26,7 +29,6 @@ from .geometry_utilities import rotate_polygon
 from .motor import motor
 from .motor import step_all
 
-
 class motor_positions(NamedTuple):
     alpha : float
     alpha_alt : float
@@ -39,6 +41,12 @@ class target_type(Enum):
     VIS_LR = 1
     VIS_HR = 2
     IFU = 3
+
+
+# Model spaces for the drawings of the arms
+alpha_arm_msp = None
+beta_arm_top = None
+beta_arm_bottom = None
 
 
 class positioner(object):
@@ -108,7 +116,6 @@ class positioner(object):
         The minimum reach of the positioner with the VIS fibre
     """
 
-
     def __init__(self, position, ident):
         """
         Create positioner
@@ -141,35 +148,41 @@ class positioner(object):
         # Define the rotation axis of arm 1 for a positioner placed at 0,0
         axis_1 = point(0.0, 0.0)
 
-        # Construct outline of lower positioner arm in the initial position
-        # (angle 90, so parallel to the Y axis)
+        global alpha_arm_msp
+        if not alpha_arm_msp:
+            alpha_arm_msp = self._get_model_space('alpha_arm_footprint_top.dxf')
+        m = alpha_arm_msp
+
+        # Build alpha arm outline from drawing
         arm_1 = polygon()
-        w = 25 / 2.0
-        l1 = 28.5
-        l2 = w
-        semicirc_points = 6
-        arm_1.append(point(w, 0))
-        arm_1.append(point(w, l1))
-        for i in range(0, semicirc_points+1):
-            t=pi * float(i) / semicirc_points
-            xx=l2 * cos(t)
-            yy=l1 + l2 * sin(t)
-            arm_1.append(point(xx, yy))
-        arm_1.append(point(-w, l1))
-        arm_1.append(point(-w, 0))
-        for i in range(1, semicirc_points + 1):
-            t = pi * float(i) / semicirc_points
-            xx = -l2 * cos(t)
-            yy = -l2 * sin(t)
-            arm_1.append(point(xx, yy))
-        arm_1.append(point(w, 0))
+        arm_1.append(point(m[187].dxf.end[0], m[187].dxf.end[1]))
+        arm_1.append(point(m[196].dxf.start[0], m[196].dxf.start[1]))
+        arm_1.append(point(m[196].dxf.end[0], m[196].dxf.end[1]))
+        arm_1.append(point(m[281].dxf.start[0], m[281].dxf.start[1]))
+        arm_1.append(point(m[281].dxf.end[0], m[281].dxf.end[1]))
+        for p in m[38].points():
+            arm_1.append(point(p[0], p[1]))
+        arm_1.append(point(m[58].dxf.start[0], m[58].dxf.start[1]))
+        arm_1.append(point(m[18].dxf.end[0], m[18].dxf.end[1]))
+        arm_1.append(point(m[459].dxf.start[0], m[459].dxf.start[1]))
+        arm_1.append(point(m[367].dxf.start[0], m[367].dxf.start[1]))
+        arm_1.append(point(m[409].dxf.start[0], m[409].dxf.start[1]))
+        arm_1.append(point(m[409].dxf.end[0], m[409].dxf.end[1]))
+
+        # Shift to put the alpha arm axis on the origin
+        dx = (m[409].dxf.end[0] - m[409].dxf.start[0]) / 2.0 + m[409].dxf.start[0]
+        dy = (m[195].dxf.end[1] - m[18].dxf.end[1]) / 2.0 + m[18].dxf.start[1]
+        arm_1 = move_polygon(arm_1, -dx, -dy)
 
         # Position of arm 2 rotation axis when arm 1 is parked
-        axis_2 = point(0.0, 28.5)
+        y = (m[409].dxf.end[1] - m[199].dxf.end[1]) / 2.0 + m[199].dxf.end[1]
+        axis_2 = point(0.0, y - dy)
 
         # Outline of arm 2 top surface with axis at 0.0 and angle -90 (so
         # folded back on top of the lower arm).
+        semicirc_points = 6
         arm_2_top = polygon()
+        w = 25 / 2.0
         l1 = 57.0
         l2 = 12.5
         #for i in range(0,semicirc_points+1):
@@ -955,10 +968,10 @@ class positioner(object):
         for p in self.neighbours:
             other_pose = pose(p.theta_1, p.theta_2)
             n1 = 0
-            for t, pose in self.targets.items():
+            for _, pose in self.targets.items():
                 self.set_pose(pose[alt1])
                 n2 = 0
-                for t, pose in p.targets.items():
+                for _, pose in p.targets.items():
                     p.set_pose(pose[alt2])
                     matrix[self.id, n1, alt1, np, n2, alt2] = self.collides_with(p)
                     n2 += 1
@@ -966,6 +979,20 @@ class positioner(object):
             p.set_pose(other_pose)
             np += 1
         self.set_pose(my_pose)
+
+
+    def _get_model_space(self, filename):
+        try:
+            paths = os.environ['PYTHONPATH'].split(os.pathsep)
+        except KeyError:
+            paths = []
+        doc = None
+        for path in paths:
+            file = os.path.join(path, 'positioner_model', filename)
+            if os.path.isfile(file):
+                doc = ezdxf.readfile(file)
+        msp = doc.modelspace()
+        return msp
 
 
     def _pose_to_arm_angles(self, theta):

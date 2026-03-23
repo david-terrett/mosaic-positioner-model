@@ -18,6 +18,7 @@ install(FILES
     demo_allocator.py
     focal_plane.py
     geometry_utilities.py
+    inspect_drawing.py
     motor.py
     positioner.py
     rerun.py
@@ -25,5 +26,7 @@ install(FILES
     simple_path_planner.py
     target.py
     test_setup.py
+    alpha_arm_footprint_top.dxf
+    beta_arm_footprint_with_pom_platform.dxf
     DESTINATION positioner_model
 )
