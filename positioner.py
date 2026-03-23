@@ -151,31 +151,32 @@ class positioner(object):
         global alpha_arm_msp
         if not alpha_arm_msp:
             alpha_arm_msp = self._get_model_space('alpha_arm_footprint_top.dxf')
-        m = alpha_arm_msp
 
-        # Build alpha arm outline from drawing
-        arm_1 = polygon()
-        arm_1.append(point(m[187].dxf.end[0], m[187].dxf.end[1]))
-        arm_1.append(point(m[196].dxf.start[0], m[196].dxf.start[1]))
-        arm_1.append(point(m[196].dxf.end[0], m[196].dxf.end[1]))
-        arm_1.append(point(m[281].dxf.start[0], m[281].dxf.start[1]))
-        arm_1.append(point(m[281].dxf.end[0], m[281].dxf.end[1]))
-        for p in m[38].points():
-            arm_1.append(point(p[0], p[1]))
-        arm_1.append(point(m[58].dxf.start[0], m[58].dxf.start[1]))
-        arm_1.append(point(m[18].dxf.end[0], m[18].dxf.end[1]))
-        arm_1.append(point(m[459].dxf.start[0], m[459].dxf.start[1]))
-        arm_1.append(point(m[367].dxf.start[0], m[367].dxf.start[1]))
-        arm_1.append(point(m[409].dxf.start[0], m[409].dxf.start[1]))
-        arm_1.append(point(m[409].dxf.end[0], m[409].dxf.end[1]))
+        # Build aplha arm outline
+        items = [(187, 'LINE', False),
+                 (196, 'LINE', True),
+                 (196, 'LINE', False),
+                 (281, 'LINE', True),
+                 (281, 'LINE', False),
+                 (38, 'POLYLINE', True),
+                 (58, 'LINE', True),
+                 (18, 'LINE', False),
+                 (459, 'LINE', True),
+                 (367, 'LINE', True),
+                 (409, 'LINE', True),
+                 (409, 'LINE', False)]
+        arm_1 = self._build_outline(alpha_arm_msp, items)
 
         # Shift to put the alpha arm axis on the origin
-        dx = (m[409].dxf.end[0] - m[409].dxf.start[0]) / 2.0 + m[409].dxf.start[0]
-        dy = (m[195].dxf.end[1] - m[18].dxf.end[1]) / 2.0 + m[18].dxf.start[1]
+        dx = (alpha_arm_msp[409].dxf.end[0] - alpha_arm_msp[409].dxf.start[0]
+              ) / 2.0 + alpha_arm_msp[409].dxf.start[0]
+        dy = (alpha_arm_msp[195].dxf.end[1] - alpha_arm_msp[18].dxf.end[1]
+              ) / 2.0 + alpha_arm_msp[18].dxf.start[1]
         arm_1 = move_polygon(arm_1, -dx, -dy)
 
         # Position of arm 2 rotation axis when arm 1 is parked
-        y = (m[409].dxf.end[1] - m[199].dxf.end[1]) / 2.0 + m[199].dxf.end[1]
+        y = (alpha_arm_msp[409].dxf.end[1] - alpha_arm_msp[199].dxf.end[1]
+             ) /2.0 + alpha_arm_msp[199].dxf.end[1]
         axis_2 = point(0.0, y - dy)
 
         # Outline of arm 2 top surface with axis at 0.0 and angle -90 (so
@@ -979,6 +980,21 @@ class positioner(object):
             p.set_pose(other_pose)
             np += 1
         self.set_pose(my_pose)
+
+
+    def _build_outline(self, msp, items):
+        arm = polygon()
+        for i in items:
+            if i[1] == 'LINE':
+                if i[2]:
+                    arm.append(point(msp[i[0]].dxf.start[0], msp[i[0]].dxf.start[1]))
+                else:
+                    arm.append(point(msp[i[0]].dxf.end[0], msp[i[0]].dxf.end[1]))
+            elif i[1] == 'POLYLINE':
+                if i[2]:
+                    for p in msp[i[0]].points():
+                        arm.append(point(p[0], p[1]))
+        return arm
 
 
     def _get_model_space(self, filename):

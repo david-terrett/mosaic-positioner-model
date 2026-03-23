@@ -25,10 +25,10 @@ class inspect_drawing(object):
     def item(self, i):
         e = self.msp[i]
         if e.dxftype() == 'LINE':
-            print(i, 'LINE', e.dxf.start[0], e.dxf.end[0],
-                  e.dxf.start[1], e.dxf.end[1])
-            self.ax.plot([e.dxf.start[0], e.dxf.start[1]],
-                         [e.dxf.end[0], e.dxf.end[1]],
+            print(i, 'LINE', e.dxf.start[0], e.dxf.start[1],
+                  e.dxf.end[0], e.dxf.end[1])
+            self.ax.plot([e.dxf.start[0], e.dxf.end[0]],
+                         [e.dxf.start[1], e.dxf.end[1]],
                          color='black')
             if self.delay > 0.0:
                 plt.pause(self.delay)
