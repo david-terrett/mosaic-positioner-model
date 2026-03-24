@@ -5,7 +5,7 @@ from math import radians
 from math import sin
 import os
 
-class inspect_drawing(object):
+class drawing_explorer(object):
 
     def __init__(self, filename, ax, delay=0.0):
         try:
@@ -22,7 +22,7 @@ class inspect_drawing(object):
         self.delay = delay
 
 
-    def item(self, i):
+    def view(self, i):
         e = self.msp[i]
         if e.dxftype() == 'LINE':
             print(i, 'LINE', e.dxf.start[0], e.dxf.start[1],
@@ -49,8 +49,11 @@ class inspect_drawing(object):
             x = []
             y = []
             for a in e.angles(10):
-                x.append(e.dxf.center[0] + e.dxf.radius * cos(radians(a)))
-                y.append(e.dxf.center[1] + e.dxf.radius * sin(radians(a)))
+                px = (e.dxf.center[0] + e.dxf.radius * cos(radians(a)))
+                py = (e.dxf.center[1] + e.dxf.radius * sin(radians(a)))
+                print(px, py)
+                x.append(px)
+                y.append(py)
             self.ax.plot(x, y, color='blue')
             if self.delay > 0.0:
                 plt.pause(self.delay)
