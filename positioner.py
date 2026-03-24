@@ -45,8 +45,7 @@ class target_type(Enum):
 
 # Model spaces for the drawings of the arms
 alpha_arm_msp = None
-beta_arm_top = None
-beta_arm_bottom = None
+beta_arm_msp = None
 
 
 class positioner(object):
@@ -152,19 +151,19 @@ class positioner(object):
         if not alpha_arm_msp:
             alpha_arm_msp = self._get_model_space('alpha_arm_footprint_top.dxf')
 
-        # Build aplha arm outline
-        items = [(187, 'LINE', False),
-                 (196, 'LINE', True),
-                 (196, 'LINE', False),
-                 (281, 'LINE', True),
-                 (281, 'LINE', False),
-                 (38, 'POLYLINE', True),
-                 (58, 'LINE', True),
-                 (18, 'LINE', False),
-                 (459, 'LINE', True),
-                 (367, 'LINE', True),
-                 (409, 'LINE', True),
-                 (409, 'LINE', False)]
+        # Build alpha arm outline
+        items = [(187, 0),
+                 (196, 1),
+                 (196, 0),
+                 (281, 1),
+                 (281, 0),
+                 (38, None),
+                 (58, 1),
+                 (18, 0),
+                 (459, 1),
+                 (367, 1),
+                 (409, 1),
+                 (409, 0)]
         arm_1 = self._build_outline(alpha_arm_msp, items)
 
         # Shift to put the alpha arm axis on the origin
@@ -181,58 +180,57 @@ class positioner(object):
 
         # Outline of arm 2 top surface with axis at 0.0 and angle -90 (so
         # folded back on top of the lower arm).
-        semicirc_points = 6
-        arm_2_top = polygon()
-        w = 25 / 2.0
-        l1 = 57.0
-        l2 = 12.5
-        #for i in range(0,semicirc_points+1):
-        #    t = pi*float(i)/semicirc_points
-        #    xx = l2*cos(t)
-        #    yy = l2*sin(t)
-        #    arm_2_top.append(point(xx,yy))
-        arm_2_top.append(point(-w, -l1/2.0 + 10.0))
-        arm_2_top.append(point(-w, -l1))
-        for i in range(1,semicirc_points+1):
-            t = pi*float(i)/semicirc_points
-            xx = -l2*cos(t)
-            yy = -l1-l2*sin(t)
-            arm_2_top.append(point(xx,yy))
-        arm_2_top.append(point(w, -l1))
-        arm_2_top.append(point(w, -l1/2.0 - 10.0))
-        for i in range(0,semicirc_points+1):
-            t = pi * float(i)/semicirc_points
-            xx = w + 8.0 + 10.0 * sin(pi - t)
-            yy = - l1/2.0 + 10.0 * cos(pi - t)
-            arm_2_top.append(point(xx,yy))
-        arm_2_top.append(point(-w, -l1/2.0 + 10.0))
-        arm_2_top.append(point(w, -l1/2.0 + 10.0))
-        #arm_2_top.append(point(w, 0))
+        global beta_arm_msp
+        if not beta_arm_msp:
+            beta_arm_msp = self._get_model_space('beta_arm_footprint_with_pom_platform.dxf')
+        items = [(31, 0),
+                 (30, 1),
+                 (44, 10),
+                 (13, 1),
+                 (12, 1),
+                 (34, 10),
+                 (35, 10),
+                 (11, 0),
+                 (28, 0),
+                 (28, 1)]
+        arm_2_top = self._build_outline(beta_arm_msp, items)
 
-        # Outline of arm 2 with axis at 0.0 and angle -90 (so folded
-        # back on top of the lower arm).
-        arm_2_bot = polygon()
-        l1 = 57.0
-        l2 = 12.5
-        for i in range(0,semicirc_points+1):
-            t = pi*float(i)/semicirc_points
-            xx = l2*cos(t)
-            yy = l2*sin(t)
-            arm_2_bot.append(point(xx,yy))
-        arm_2_bot.append(point(-w, -l1/2.0 -10.0))
-        arm_2_bot.append(point(w, -l1/2.0 - 10.0))
-        for i in range(0,semicirc_points+1):
-            t = pi * float(i)/semicirc_points
-            xx = w + 8.0 + 10.0 * sin(pi - t)
-            yy = - l1/2.0 + 10.0 * cos(pi - t)
-            arm_2_bot.append(point(xx,yy))
-        arm_2_bot.append(point(w, -l1/2.0 + 10.0))
-        arm_2_bot.append(point(w, 0))
+        # Shift to put the alpha arm axis on the origin
+        dx = (beta_arm_msp[29].dxf.end[0] - beta_arm_msp[29].dxf.start[0]
+              ) / 2.0 + beta_arm_msp[29].dxf.start[0]
+        dy = (beta_arm_msp[28].dxf.start[1] - beta_arm_msp[28].dxf.end[1]
+              ) / 2.0 + beta_arm_msp[28].dxf.end[1]
+        arm_2_top = move_polygon(arm_2_top, -dx, -dy)
+
+        # Rotate into correct position
+        arm_2_top = rotate_polygon(arm_2_top, point(0,0), 0.0, 1.0)
+
+        items = [(31, 1),
+                 (12, 0),
+                 (12, 1),
+                 (34, 10),
+                 (35, 10),
+                 (11, 0),
+                 (43, 10),
+                 (28, 1),
+                 (31, 1)]
+        arm_2_bot = self._build_outline(beta_arm_msp, items)
+
+        # Shift to put the alpha arm axis on the origin
+        dx = (beta_arm_msp[29].dxf.end[0] - beta_arm_msp[29].dxf.start[0]
+              ) / 2.0 + beta_arm_msp[29].dxf.start[0]
+        dy = (beta_arm_msp[28].dxf.start[1] - beta_arm_msp[28].dxf.end[1]
+              ) / 2.0 + beta_arm_msp[28].dxf.end[1]
+        arm_2_bot = move_polygon(arm_2_bot, -dx, -dy)
+
+        # Rotate into correct position
+        arm_2_bot = rotate_polygon(arm_2_bot, point(0,0), 0.0, 1.0)
+
 
         # Fibre positions
         ir_fiber = point(4.0, -57.0)
         vis_fiber = point(-4.0, -57.0)
-        ifu = point(0.0, -l1/2.0)
+        ifu = point(0.0, -57/2.0)
 
         # Move arm 2 onto its axis position
         arm_2_top = move_polygon(arm_2_top, axis_2.x(), axis_2.y())
@@ -709,7 +707,7 @@ class positioner(object):
                                    color=self._colours[self.type]))
             self._d.append(axes.plot(self.arm_2_bot.x(), self.arm_2_bot.y(),
                                    color=self._colours[self.type],
-                                   dashes=(5,5)))
+                                   dashes=(2,2)))
 
             # Draw the axes
             self._d.append(axes.plot(self._axis_1_base.x(), self._axis_1_base.y(),
@@ -985,15 +983,20 @@ class positioner(object):
     def _build_outline(self, msp, items):
         arm = polygon()
         for i in items:
-            if i[1] == 'LINE':
-                if i[2]:
-                    arm.append(point(msp[i[0]].dxf.start[0], msp[i[0]].dxf.start[1]))
+            e = msp[i[0]]
+            if e.dxftype() == 'LINE':
+                if i[1]:
+                    arm.append(point(e.dxf.start[0], e.dxf.start[1]))
                 else:
-                    arm.append(point(msp[i[0]].dxf.end[0], msp[i[0]].dxf.end[1]))
-            elif i[1] == 'POLYLINE':
-                if i[2]:
-                    for p in msp[i[0]].points():
-                        arm.append(point(p[0], p[1]))
+                    arm.append(point(e.dxf.end[0], e.dxf.end[1]))
+            elif e.dxftype() == 'POLYLINE':
+                for p in e.points():
+                    arm.append(point(p[0], p[1]))
+            elif e.dxftype() == 'ARC':
+                for a in e.angles(i[1]):
+                    px = (msp[i[0]].dxf.center[0] + msp[i[0]].dxf.radius * cos(radians(a)))
+                    py = (msp[i[0]].dxf.center[1] + msp[i[0]].dxf.radius * sin(radians(a)))
+                    arm.append(point(px, py))
         return arm
 
 
