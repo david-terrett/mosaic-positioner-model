@@ -55,7 +55,8 @@ use with anaconda on some systems (e.g. MACOS).
     >>> # Create some targets and compute which are reachable by each
     >>> # positioner. density is per square arcmin.
     >>> add_random_targets(fp, density=5, ir=True)
-    >>> add_random_targets(fp, density=5, vis=True)
+    >>> add_random_targets(fp, density=5, vis_lr=True)
+    >>> add_random_targets(fp, density=5, vis_hr=True)
 
     >>> # See how many targets were created
     >>> print(len(fp.targets))
