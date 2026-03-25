@@ -1,13 +1,39 @@
-import ezdxf
-import matplotlib.pyplot as plt
+# -*- coding utf-8 -*-
+
 from math import cos
 from math import radians
 from math import sin
 import os
 
+import ezdxf
+import matplotlib.pyplot as plt
+
+
 class drawing_explorer(object):
+    """
+    Class for inspecting the contents of a .dxf file.
+
+    Attributes
+    ----------
+    msp : dxf.layouts.layout.Modelspace
+        dxf model space
+    """
 
     def __init__(self, filename, ax, delay=0.0):
+        """
+        Create drawing explorer
+
+        Parameters
+        ----------
+        filename : str
+            Name of dxf file
+        ax : matplotlib.pyplot.Axes
+            Axes to plot in
+        delay : float
+            Delay after drawing an item (seconds)
+
+        The xdf file is expected to be somewhere on the PYTHONPATH.
+        """
         try:
             paths = os.environ['PYTHONPATH'].split(os.pathsep)
         except KeyError:
@@ -23,6 +49,14 @@ class drawing_explorer(object):
 
 
     def view(self, i):
+        """
+        View an item in the model space
+
+        Arguments
+        ---------
+        i : int
+            Index of the item
+        """
         e = self.msp[i]
         if e.dxftype() == 'LINE':
             print(i, 'LINE', e.dxf.start[0], e.dxf.start[1],

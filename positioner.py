@@ -1,6 +1,5 @@
 # -*- coding utf-8 -*-
 import os
-import ezdxf
 
 from enum import Enum
 from math import acos
@@ -13,6 +12,7 @@ from math import pi
 from math import sin
 from typing import NamedTuple
 
+import ezdxf
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.patches import Ellipse
