@@ -167,16 +167,19 @@ class positioner(object):
         arm_1 = self._build_outline(alpha_arm_msp, items)
 
         # Shift to put the alpha arm axis on the origin
+        dy = (alpha_arm_msp[409].dxf.end[1] - alpha_arm_msp[199].dxf.end[1]
+              ) /2.0 + alpha_arm_msp[199].dxf.end[1]
         dx = (alpha_arm_msp[409].dxf.end[0] - alpha_arm_msp[409].dxf.start[0]
               ) / 2.0 + alpha_arm_msp[409].dxf.start[0]
-        dy = (alpha_arm_msp[195].dxf.end[1] - alpha_arm_msp[18].dxf.end[1]
-              ) / 2.0 + alpha_arm_msp[18].dxf.start[1]
         arm_1 = move_polygon(arm_1, -dx, -dy)
 
+        # Rotate into park position
+        arm_1 = rotate_polygon(arm_1, point(0,0), -1.0, 0.0)
+
         # Position of arm 2 rotation axis when arm 1 is parked
-        y = (alpha_arm_msp[409].dxf.end[1] - alpha_arm_msp[199].dxf.end[1]
-             ) /2.0 + alpha_arm_msp[199].dxf.end[1]
-        axis_2 = point(0.0, y - dy)
+        y = (alpha_arm_msp[195].dxf.end[1] - alpha_arm_msp[18].dxf.end[1]
+             ) / 2.0 + alpha_arm_msp[18].dxf.start[1]
+        axis_2 = point(0.0, dy - y)
 
         # Outline of arm 2 top surface with axis at 0.0 and angle -90 (so
         # folded back on top of the lower arm).
