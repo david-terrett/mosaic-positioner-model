@@ -48,11 +48,18 @@ class beam_steering_mirror(object):
         Parameters
         ----------
             axes : matplotlib axes
-                plot axes
+            plot axes
         """
         # Delete existing drawing
         for d in self._d:
-            d[0].remove()
+            try:
+                if isinstance(d, list):
+                    for item in d:
+                        item.remove()
+                else:
+                    d.remove()
+            except (NotImplementedError, ValueError, AttributeError):
+                pass
         self._d = []
 
         # Draw the mirror as a hexagon
@@ -83,7 +90,7 @@ class beam_steering_mirror(object):
         x = self.position.x() + 150.0 * cos(a)
         y = self.position.y() + 150.0 * sin(a)
         self._d.append(axes.plot([self.position.x(), x], [self.position.y(), y],
-                       color='grey'))
+                                 color='grey'))
 
 
 

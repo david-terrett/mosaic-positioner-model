@@ -10,6 +10,8 @@ from math import fabs
 from math import radians
 from math import pi
 from math import sin
+from math import sqrt
+
 from typing import NamedTuple
 
 import ezdxf
@@ -130,8 +132,9 @@ class positioner(object):
         self.id = ident
 
         self.blocker = None
-        self.alpha_motor = motor()
-        self.beta_motor = motor()
+        self.alpha_motor = motor(low_limit=0.0, high_limit=360.0)
+        # LG self.beta_motor = motor()
+        self.beta_motor = motor(low_limit=0.0, high_limit=360.0)
         self.gamma_motor = motor()
         self.neighbours = []
         self.on_target = False
@@ -175,6 +178,7 @@ class positioner(object):
 
         # Rotate into park position
         arm_1 = rotate_polygon(arm_1, point(0,0), -1.0, 0.0)
+        arm_1 = self._add_semicircle_cap(arm_1, axis_1, length_dir=[0, 1], radius=13.5, n=24)
 
         # Position of arm 2 rotation axis when arm 1 is parked
         y = (alpha_arm_msp[195].dxf.end[1] - alpha_arm_msp[18].dxf.end[1]
@@ -207,7 +211,18 @@ class positioner(object):
 
         # Rotate into correct position
         arm_2_top = rotate_polygon(arm_2_top, point(0,0), 0.0, 1.0)
-
+        arm_2_top = self._add_semicircle_cap(arm_2_top, axis_2, length_dir=[0, -1], radius=15, n=24)
+        arm_2_top = self._add_semicircle_cap(
+            arm_2_top,
+            axis_2,
+            length_dir=[1, 0],
+            radius=5,
+            n=24,
+            side="max",
+            cut_depth=10,
+            fit_to_cut=True,
+            cap_depth=10,
+        )
         items = [(31, 1),
                  (12, 0),
                  (12, 1),
@@ -228,8 +243,30 @@ class positioner(object):
 
         # Rotate into correct position
         arm_2_bot = rotate_polygon(arm_2_bot, point(0,0), 0.0, 1.0)
+        arm_2_bot = self._add_semicircle_cap(
+            arm_2_bot,
+            point(0,0),
+            length_dir=[0, -1],
+            radius=13.5,
+            n=24,
+            side="min",
+            cut_depth=15,
+            fit_to_cut=True,
+            cap_depth=14.25,
+        )
 
-
+        arm_2_bot = self._add_semicircle_cap(
+            arm_2_bot,
+            axis_2,
+            length_dir=[1, 0],
+            radius=5,
+            n=24,
+            side="max",
+            cut_depth=10,
+            fit_to_cut=True,
+            cap_depth=10,
+        )
+        
         # Fibre positions
         ir_fiber = point(4.0, -57.0)
         vis_fiber = point(-4.0, -57.0)
@@ -499,22 +536,12 @@ class positioner(object):
         pos : motor_positions
             motor positions
         """
-        alpha = degrees(atan2(sin(pose.a), cos(pose.a)))
+        alpha = degrees(atan2(sin(pose.a), cos(pose.a))) % 360.0
         b = pose.b - pose.a - pi
-        beta = degrees(atan2(sin(b), cos(b)))
+        beta = degrees(atan2(sin(b), cos(b))) % 360.0
 
-        if alpha + 360.0 <= self.alpha_motor.high_limit:
-            alpha_alt = alpha + 360.0
-        elif alpha - 360.0 >= self.alpha_motor.low_limit:
-            alpha_alt = alpha - 360.0
-        else:
-            alpha_alt = None
-        if beta + 360.0 <= self.beta_motor.high_limit:
-            beta_alt = beta + 360.0
-        elif beta - 360.0 >= self.beta_motor.low_limit:
-            beta_alt = beta - 360.0
-        else:
-            beta_alt = None
+        alpha_alt = None
+        beta_alt = None
         return motor_positions(alpha, alpha_alt, beta, beta_alt)
 
 
@@ -685,7 +712,7 @@ class positioner(object):
         return self.on_target
 
 
-    def plot(self, axes):
+    def plot(self, axes, show_angles=False):
         """
         Plot the positioner outline
 
@@ -717,6 +744,20 @@ class positioner(object):
                                    '+', color='black', markersize=4.0))
             self._d.append(axes.plot(self.axis_2.x(), self.axis_2.y(), '+',
                                    color='black', markersize=4.0))
+            label = (
+                f"{self.id}\na={self.alpha_motor.position % 360.0:.1f}\nb={self.beta_motor.position % 360.0:.1f}"
+                if show_angles
+                else f"{self.id}"
+            )
+            self._d.append([axes.text(
+                self._axis_1_base.x(),
+                self._axis_1_base.y(),
+                label,
+                color='blue',
+                fontsize=6,
+                ha='center',
+                va='center',
+            )])
             # Draw the fibers
             self._patches.append(axes.add_patch(Ellipse(xy=(self.ir_fiber.x(),
                                                           self.ir_fiber.y()),
@@ -912,7 +953,140 @@ class positioner(object):
             plt.pause(0.002)
         return
 
+    
 
+    def _add_semicircle_cap(self, arm, axis_point, length_dir, radius=12.5, n=24, tol=1e-9, side="max", cut_depth=None, fit_to_cut=False, cap_depth=None):
+        pts = [point(x, y) for x, y in zip(arm.x(), arm.y())]
+        if len(pts) < 4:
+            return arm
+
+        if abs(pts[0].x() - pts[-1].x()) < tol and abs(pts[0].y() - pts[-1].y()) < tol:
+            pts = pts[:-1]
+
+        npts = len(pts)
+        if npts < 4:
+            return arm
+
+        ax, ay = axis_point.x(), axis_point.y()
+
+        d = np.array(length_dir, dtype=float)
+        dn = np.linalg.norm(d)
+        if dn < tol:
+            return arm
+        d = d / dn
+
+        vec = np.array([[p.x() - ax, p.y() - ay] for p in pts], dtype=float)
+        proj = vec @ d
+
+
+
+        if side == "max":
+            tip_idx = int(np.argmax(proj))
+            tip_len = float(proj[tip_idx])
+            cutoff = tip_len - (radius if cut_depth is None else cut_depth)
+            if cutoff <= tol:
+                return arm
+            inside = proj >= cutoff - tol
+        else:
+            tip_idx = int(np.argmin(proj))
+            tip_len = float(proj[tip_idx])
+            cutoff = tip_len + (radius if cut_depth is None else cut_depth)
+            #if cutoff >= -tol:
+            #    return arm
+            inside = proj <= cutoff + tol
+        if not np.any(inside):
+            return arm
+
+        start = tip_idx
+        while inside[(start - 1) % npts]:
+            start = (start - 1) % npts
+            if start == tip_idx:
+                return arm
+
+        end = tip_idx
+        while inside[(end + 1) % npts]:
+            end = (end + 1) % npts
+            if end == tip_idx:
+                return arm
+
+        i0 = (start - 1) % npts
+        i1 = start
+        j0 = end
+        j1 = (end + 1) % npts
+
+        def edge_intersection(p0, p1):
+            s0 = (p0.x() - ax) * d[0] + (p0.y() - ay) * d[1]
+            s1 = (p1.x() - ax) * d[0] + (p1.y() - ay) * d[1]
+            if abs(s1 - s0) < tol:
+                return point(p1.x(), p1.y())
+            t = (cutoff - s0) / (s1 - s0)
+            t = max(0.0, min(1.0, t))
+            return point(
+                p0.x() + t * (p1.x() - p0.x()),
+                p0.y() + t * (p1.y() - p0.y())
+            )
+
+        p_start = edge_intersection(pts[i0], pts[i1])
+        p_end = edge_intersection(pts[j0], pts[j1])
+
+        if fit_to_cut:
+            chord = np.array([p_end.x() - p_start.x(), p_end.y() - p_start.y()], dtype=float)
+            chord_len = np.linalg.norm(chord)
+            if chord_len < tol:
+                return arm
+            if cap_depth is None:
+                cap_depth = 0.5 * chord_len
+            cap_depth = max(float(cap_depth), tol)
+            arc_radius = chord_len * chord_len / (8.0 * cap_depth) + cap_depth / 2.0
+            mid_point = np.array([
+                0.5 * (p_start.x() + p_end.x()),
+                0.5 * (p_start.y() + p_end.y())
+            ])
+            normal = d if side == "max" else -d
+            center_xy = mid_point - normal * (arc_radius - cap_depth)
+            center = point(
+                center_xy[0],
+                center_xy[1]
+            )
+        else:
+            center = point(ax + d[0] * cutoff, ay + d[1] * cutoff)
+            arc_radius = radius
+
+        a0 = atan2(p_start.y() - center.y(), p_start.x() - center.x())
+        a1 = atan2(p_end.y() - center.y(), p_end.x() - center.x())
+        tip_angle = atan2(d[1], d[0]) if side == "max" else atan2(-d[1], -d[0])
+
+
+        delta = np.arctan2(np.sin(a1 - a0), np.cos(a1 - a0))
+        mid = np.arctan2(np.sin(tip_angle - a0), np.cos(tip_angle - a0))
+
+        if delta > 0 and not (0.0 <= mid <= delta):
+            a1 -= 2.0 * pi
+        elif delta < 0 and not (delta <= mid <= 0.0):
+            a1 += 2.0 * pi
+
+        arc_angles = np.linspace(a0, a1, n)
+
+        new_arm = polygon()
+
+        idx = j1
+        new_arm.append(point(p_end.x(), p_end.y()))
+        while idx != start:
+            new_arm.append(point(pts[idx].x(), pts[idx].y()))
+            idx = (idx + 1) % npts
+
+        new_arm.append(point(p_start.x(), p_start.y()))
+
+        for a in arc_angles[1:-1]:
+            new_arm.append(point(
+                center.x() + arc_radius * cos(a),
+                center.y() + arc_radius * sin(a)
+            ))
+
+        new_arm.append(point(p_end.x(), p_end.y()))
+        return new_arm
+
+        
     def _arm_angles(self, p, targ_type):
 
         # Bearing of target

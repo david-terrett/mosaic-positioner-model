@@ -61,8 +61,28 @@ class motor(object):
             step size (seconds)
         """
 
+        if target < self.low_limit or target > self.high_limit:
+            raise RuntimeError('Motor position out of range')
+
         # Calculate the step size in degrees. Assume 18 deg/s
         step_d = step * 18.0
+
+        if self.low_limit == 0.0 and self.high_limit == 360.0:
+            start = self.position % 360.0
+            goal = target % 360.0
+            delta = (goal - start) % 360.0
+            if delta > 180.0:
+                delta -= 360.0
+            if delta < 0.0:
+                step_d = -step_d
+
+            n = int(trunc(delta / step_d)) + 1 if abs(delta) > 0.0 else 1
+            self._path = path(self.position)
+            for i in range(1, n):
+                self._path.append((start + i * step_d) % 360.0)
+            self._path.append(target)
+            return
+
         if target < self.position:
             step_d = -step_d
 
