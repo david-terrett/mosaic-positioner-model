@@ -40,8 +40,11 @@ class focal_plane(object):
     """
 
     def __init__(self):
-        self._dx = 95.0 * 3.0 / 4.0
-        self._dy = 95.0 * sqrt(3.0) / 2.0
+#        self._dx = 95.0 * 3.0 / 4.0
+#        self._dy = 95.0 * sqrt(3.0) / 2.0
+# Tile pitch changed to reflect new positioner tolerancing 11/8/2026 [GBD]
+        self._dx = 98.0 * 3.0 / 4.0
+        self._dy = 98.0 * sqrt(3.0) / 2.0
         self._max_sep2 = 30000.
         self.x_max = 13.0 * self._dx
         self.x_min = -self.x_max
@@ -49,51 +52,74 @@ class focal_plane(object):
         self.y_min = -self.y_max
 
     # Build the list of positioners
+#        self.positioners = []
+#        self._add_column(0, 13)
+#        self._add_column(1, 12)
+#        self._add_column(-1, 12)
+#        self._add_column(2, 13)
+#        self._add_column(-2, 13)
+#        self._add_column(3, 16)
+#        self._add_column(-3, 16)
+#        self._add_column(4, 19)
+#        self._add_column(-4, 19)
+#        self._add_column(5, 18)
+#        self._add_column(-5, 18)
+#        self._add_column(6, 17)
+#        self._add_column(-6, 17)
+#        self._add_column(7, 16)
+#        self._add_column(-7, 16)
+#        self._add_column(8, 13)
+#        self._add_column(-8, 13)
+#        self._add_column(9, 12)
+#        self._add_column(-9, 12)
+#        self._add_column(10, 9)
+#        self._add_column(-10, 9)
+# New positioner list to match new tile pitch 11/8/2026 [GBD]
         self.positioners = []
-        self._add_column(0, 13)
+        self._add_column(0, 9)
         self._add_column(1, 12)
         self._add_column(-1, 12)
         self._add_column(2, 13)
         self._add_column(-2, 13)
         self._add_column(3, 16)
         self._add_column(-3, 16)
-        self._add_column(4, 19)
-        self._add_column(-4, 19)
-        self._add_column(5, 18)
-        self._add_column(-5, 18)
-        self._add_column(6, 17)
-        self._add_column(-6, 17)
-        self._add_column(7, 16)
-        self._add_column(-7, 16)
+        self._add_column(4, 17)
+        self._add_column(-4, 17)
+        self._add_column(5, 16)
+        self._add_column(-5, 16)
+        self._add_column(6, 15)
+        self._add_column(-6, 15)
+        self._add_column(7, 14)
+        self._add_column(-7, 14)
         self._add_column(8, 13)
         self._add_column(-8, 13)
         self._add_column(9, 12)
         self._add_column(-9, 12)
-        self._add_column(10, 9)
-        self._add_column(-10, 9)
+        self._add_column(10, 11)
+        self._add_column(-10, 11)
 
         # Set the positioner types
-        types = [3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
+        types = [3,1,6,3,1,6,6,1,3,6,1,                  # 9
                  6,3,1,6,3,1,1,3,6,1,3,6,                # 12
                  6,3,1,6,3,1,1,3,6,1,3,6,                # 12
-                 3,1,6,3,1,6,1,6,1,3,6,1,3,              # 13
-                 3,1,6,3,1,6,1,6,1,3,6,1,3,              # 13
-                 6,3,1,6,3,1,6,1,1,3,6,1,3,6,1,1,        # 16
-                 6,3,1,6,3,1,6,1,1,3,6,1,3,6,1,1,        # 16
-                 3,1,6,3,1,6,3,1,6,1,6,1,3,6,1,3,6,1,1,  # 19
-                 3,1,6,3,1,6,3,1,6,1,6,1,3,6,1,3,6,1,1,  # 19
-                 6,3,1,6,3,1,6,3,1,1,3,6,1,3,6,1,3,0,    # 18
-                 6,3,1,6,3,1,6,3,1,1,3,6,1,3,6,1,3,0,    # 18
-                 3,1,6,3,1,6,3,1,0,6,1,3,6,1,3,6,1,      # 17
-                 3,1,6,3,1,6,3,1,0,6,1,3,6,1,3,6,1,      # 17
-                 6,1,3,6,1,3,2,1,1,3,6,1,3,2,1,1,        # 16
-                 6,1,3,6,1,3,2,1,1,3,6,1,3,2,1,1,        # 16
-                 0,0,0,1,1,2,1,0,0,1,2,1,1,              # 13
-                 0,0,0,1,1,2,1,0,0,1,2,1,1,              # 13
-                 0,0,0,0,1,1,0,0,0,1,1,0,                # 12
-                 0,0,0,0,1,1,0,0,0,1,1,0,                # 12
-                 0,0,0,1,1,0,0,1,0,                      # 9
-                 0,0,0,1,1,0,0,1,0 ]                     # 9
+                 3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
+                 3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
+                 6,3,1,6,3,1,6,3,1,3,6,1,3,6,1,3,        # 16
+                 6,3,1,6,3,1,6,3,1,3,6,1,3,6,1,3,        # 16
+                 3,1,6,3,1,6,3,1,3,6,1,3,6,1,3,3,3,      # 17
+                 3,1,6,3,1,6,3,1,3,6,1,3,6,1,3,3,1,      # 17
+                 6,3,1,6,3,1,6,3,1,3,6,1,3,6,1,3,        # 16
+                 6,3,1,6,3,1,6,3,1,3,6,1,3,6,1,3,        # 16
+                 3,1,6,3,1,6,3,1,6,1,3,6,1,3,3,          # 15
+                 3,1,6,3,1,6,3,1,6,1,3,6,1,3,3,          # 15
+                 0,3,1,6,3,1,0,0,3,6,1,3,3,1,            # 14
+                 0,3,1,6,1,1,1,0,1,6,1,3,3,1,            # 14
+                 0,0,0,1,1,1,1,0,0,1,1,1,1,              # 13
+                 0,0,0,1,1,1,1,0,0,1,1,1,1,              # 13
+                 0,0,0,1,1,0,0,0,0,1,1,0,                # 12
+                 0,0,0,1,1,0,0,0,0,1,1,0,                # 12
+                 0,0,0,1,0,0,0,0,1,0,0,                  # 11
+                 0,0,0,1,0,0,0,0,1,0,0 ]                 # 11
         for pos in self.positioners:
             pos.type = types[pos.id]
 
