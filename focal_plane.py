@@ -76,7 +76,7 @@ class focal_plane(object):
 #        self._add_column(-10, 9)
 # New positioner list to match new tile pitch 11/8/2026 [GBD]
         self.positioners = []
-        self._add_column(0, 9)
+        self._add_column(0, 11)
         self._add_column(1, 12)
         self._add_column(-1, 12)
         self._add_column(2, 13)
@@ -99,7 +99,7 @@ class focal_plane(object):
         self._add_column(-10, 11)
 
         # Set the positioner types
-        types = [3,1,6,3,1,6,6,1,3,6,1,                  # 9
+        types = [3,1,6,3,1,6,6,1,3,6,1,                  # 11
                  6,3,1,6,3,1,1,3,6,1,3,6,                # 12
                  6,3,1,6,3,1,1,3,6,1,3,6,                # 12
                  3,1,6,3,1,6,3,6,1,3,6,1,3,              # 13
